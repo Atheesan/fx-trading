@@ -12,12 +12,12 @@ Keep V1 focused on market monitoring. Do not add features outside that scope unl
 
 ### Backend
 
-- Java
+- Java 25 LTS
 - Spring Boot
 - Spring Web
 - Spring WebSocket
 - Spring Security later, when explicitly requested
-- Maven
+- Gradle
 - PostgreSQL
 - TimescaleDB where appropriate
 - Redis

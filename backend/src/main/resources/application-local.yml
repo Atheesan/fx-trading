@@ -1,0 +1,4 @@
+fxai:
+  cors:
+    allowed-origins:
+      - ${FXAI_CORS_ALLOWED_ORIGIN:http://localhost:5173}

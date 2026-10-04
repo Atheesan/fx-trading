@@ -1,0 +1,57 @@
+# Environment and local configuration
+.env
+.env.*
+!.env.example
+*.local
+
+# Secrets and credentials
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Java and Gradle
+.gradle/
+build/
+*.class
+*.jar
+*.war
+*.ear
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# Node, Vite, and frontend builds
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Test and coverage output
+coverage/
+test-results/
+playwright-report/
+blob-report/
+
+# Logs and runtime files
+*.log
+logs/
+*.pid
+*.seed
+
+# IDE and editor state
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~

@@ -1,20 +1,24 @@
-import './App.css'
+import { Navigate, Route, Routes } from 'react-router-dom'
+
+import { AppLayout } from './components/layout/AppLayout'
+import { Alerts } from './pages/Alerts'
+import { Dashboard } from './pages/Dashboard'
+import { Markets } from './pages/Markets'
+import { PairDetails } from './pages/PairDetails'
+import { Settings } from './pages/Settings'
 
 function App() {
   return (
-    <main className="app-shell">
-      <section className="welcome-panel" aria-labelledby="page-title">
-        <p className="eyebrow">FXAI V1</p>
-        <h1 id="page-title">Forex market monitoring</h1>
-        <p className="summary">
-          The project foundation is ready. Market data will be added in a future
-          V1 feature.
-        </p>
-        <p className="status" role="status">
-          Initial application scaffold
-        </p>
-      </section>
-    </main>
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route index element={<Dashboard />} />
+        <Route path="markets" element={<Markets />} />
+        <Route path="markets/:symbol" element={<PairDetails />} />
+        <Route path="alerts" element={<Alerts />} />
+        <Route path="settings" element={<Settings />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+    </Routes>
   )
 }
 

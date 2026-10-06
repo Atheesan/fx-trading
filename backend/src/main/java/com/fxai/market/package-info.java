@@ -1,6 +1,4 @@
 /**
- * Market-monitoring use cases and domain types.
- *
- * <p>The initial backend setup intentionally contains no market-data behavior.</p>
+ * Market-monitoring use cases, API boundaries, and provider abstractions.
  */
 package com.fxai.market;

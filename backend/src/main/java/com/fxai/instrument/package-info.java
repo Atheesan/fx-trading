@@ -1,6 +1,4 @@
 /**
- * Supported-instrument use cases and domain types.
- *
- * <p>The initial backend setup intentionally contains no instrument behavior.</p>
+ * Supported Forex instruments and currency domain types.
  */
 package com.fxai.instrument;

@@ -1,6 +1,7 @@
 # FXAI Frontend
 
-Minimal React and TypeScript application shell built with Vite.
+Responsive React and TypeScript market-monitoring dashboard built with Vite,
+Tailwind CSS, TanStack Query, and React Router.
 
 ## Commands
 
@@ -12,4 +13,14 @@ npm test
 npm run lint
 ```
 
-Forex market-monitoring features are intentionally not implemented in this scaffold.
+## Configuration
+
+The frontend calls `http://localhost:8080` by default. Set
+`VITE_API_BASE_URL` to point at a different backend origin:
+
+```shell
+VITE_API_BASE_URL=https://api.example.com npm run build
+```
+
+Only the backend base URL belongs in this variable; API paths are defined in the
+dedicated client layer under `src/api`.

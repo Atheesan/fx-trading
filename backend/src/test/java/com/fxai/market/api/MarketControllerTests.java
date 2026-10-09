@@ -3,6 +3,11 @@ package com.fxai.market.api;
 import com.fxai.instrument.Currency;
 import com.fxai.instrument.CurrencyPair;
 import com.fxai.market.PriceQuote;
+import com.fxai.market.error.MarketDataRateLimitException;
+import com.fxai.market.error.MarketDataUnavailableException;
+import com.fxai.market.error.MarketDataAuthenticationException;
+import com.fxai.market.domain.CandleTimeframe;
+import com.fxai.market.domain.PriceCandle;
 import com.fxai.market.provider.MarketDataProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,6 +84,60 @@ class MarketControllerTests {
 				.andExpect(jsonPath("$.code").value("UNSUPPORTED_CURRENCY_PAIR"))
 				.andExpect(jsonPath("$.message").value("Currency pair is not supported: BTCUSD"))
 				.andExpect(jsonPath("$.timestamp").exists());
+	}
+
+	@Test
+	void translatesMarketDataRateLimitsToTooManyRequests() throws Exception {
+		when(marketDataProvider.getPrice("EURUSD")).thenThrow(new MarketDataRateLimitException());
+
+		mockMvc.perform(get("/api/v1/market/prices/EURUSD"))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("MARKET_DATA_RATE_LIMITED"))
+				.andExpect(jsonPath("$.message").value("Market data request limit reached; try again later"));
+	}
+
+	@Test
+	void translatesProviderFailuresToServiceUnavailable() throws Exception {
+		when(marketDataProvider.getPrice("EURUSD")).thenThrow(new MarketDataUnavailableException());
+
+		mockMvc.perform(get("/api/v1/market/prices/EURUSD"))
+				.andExpect(status().isServiceUnavailable())
+				.andExpect(jsonPath("$.code").value("MARKET_DATA_UNAVAILABLE"))
+				.andExpect(jsonPath("$.message").value("Market data is temporarily unavailable"));
+	}
+
+	@Test
+	void returnsHistoricalCandles() throws Exception {
+		PriceCandle candle = new PriceCandle("EURUSD", CandleTimeframe.ONE_MINUTE,
+				new BigDecimal("1.1000"), new BigDecimal("1.1020"),
+				new BigDecimal("1.0990"), new BigDecimal("1.1010"),
+				42, true, TIMESTAMP);
+		when(marketDataProvider.getHistoricalCandles("EURUSD", CandleTimeframe.ONE_MINUTE, 2))
+				.thenReturn(Optional.of(List.of(candle)));
+
+		mockMvc.perform(get("/api/v1/market/candles/EURUSD")
+					.param("timeframe", "1m").param("count", "2"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].symbol").value("EURUSD"))
+				.andExpect(jsonPath("$[0].timeframe").value("1m"))
+				.andExpect(jsonPath("$[0].close").value(1.1010))
+				.andExpect(jsonPath("$[0].volume").value(42));
+	}
+
+	@Test
+	void rejectsUnsupportedCandleTimeframe() throws Exception {
+		mockMvc.perform(get("/api/v1/market/candles/EURUSD").param("timeframe", "30m"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void translatesAuthenticationFailuresToServiceUnavailable() throws Exception {
+		when(marketDataProvider.getPrice("EURUSD"))
+				.thenThrow(new MarketDataAuthenticationException("OANDA credentials were rejected"));
+
+		mockMvc.perform(get("/api/v1/market/prices/EURUSD"))
+				.andExpect(status().isServiceUnavailable())
+				.andExpect(jsonPath("$.code").value("MARKET_DATA_AUTHENTICATION_FAILED"));
 	}
 
 }

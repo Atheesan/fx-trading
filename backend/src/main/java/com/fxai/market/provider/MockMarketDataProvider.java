@@ -1,33 +1,50 @@
 package com.fxai.market.provider;
 
-import com.fxai.instrument.Currency;
 import com.fxai.instrument.CurrencyPair;
+import com.fxai.instrument.SupportedCurrencyPairs;
 import com.fxai.market.PriceQuote;
+import com.fxai.market.domain.CandleTimeframe;
+import com.fxai.market.domain.PriceCandle;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Component
+@ConditionalOnProperty(
+		prefix = "fxai.market",
+		name = "provider",
+		havingValue = "mock",
+		matchIfMissing = true
+)
 public class MockMarketDataProvider implements MarketDataProvider {
+    @Override
+    public Optional<List<PriceCandle>> getHistoricalCandles(
+            String symbol, CandleTimeframe timeframe, int count) {
+        if (count < 1 || count > 5000) {
+            throw new IllegalArgumentException("count must be between 1 and 5000");
+        }
+        Optional<CurrencyPair> pair = SupportedCurrencyPairs.findBySymbol(symbol);
+        if (pair.isEmpty()) {
+            return java.util.Optional.empty();
+        }
 
-	private static final List<CurrencyPair> SUPPORTED_PAIRS = List.of(
-			new CurrencyPair(Currency.EUR, Currency.USD),
-			new CurrencyPair(Currency.GBP, Currency.USD),
-			new CurrencyPair(Currency.USD, Currency.JPY),
-			new CurrencyPair(Currency.AUD, Currency.USD),
-			new CurrencyPair(Currency.NZD, Currency.USD),
-			new CurrencyPair(Currency.USD, Currency.CAD),
-			new CurrencyPair(Currency.USD, Currency.CHF),
-			new CurrencyPair(Currency.EUR, Currency.GBP)
-	);
+        var now = clock.instant();
+        BigDecimal price = new BigDecimal("1.00000");
+        List<PriceCandle> candles = IntStream.range(0, count)
+                .mapToObj(index -> new PriceCandle(
+                        pair.orElseThrow().symbol(), timeframe,
+                        price, price, price, price, 0L, true,
+                        now.minus(timeframe.duration().multipliedBy(count - index))))
+                .toList();
+        return Optional.of(candles);
+    }
 
 	private static final Map<String, MockPrice> MOCK_PRICES = Map.ofEntries(
 			Map.entry("EURUSD", new MockPrice("1.08420", "1.08440")),
@@ -41,7 +58,6 @@ public class MockMarketDataProvider implements MarketDataProvider {
 	);
 
 	private final Clock clock;
-	private final Map<String, CurrencyPair> pairsBySymbol;
 
 	public MockMarketDataProvider() {
 		this(Clock.systemUTC());
@@ -49,22 +65,21 @@ public class MockMarketDataProvider implements MarketDataProvider {
 
 	MockMarketDataProvider(Clock clock) {
 		this.clock = Objects.requireNonNull(clock, "clock must not be null");
-		this.pairsBySymbol = SUPPORTED_PAIRS.stream()
-				.collect(Collectors.toUnmodifiableMap(CurrencyPair::symbol, Function.identity()));
 	}
 
 	@Override
 	public List<CurrencyPair> getCurrencyPairs() {
-		return SUPPORTED_PAIRS;
+		return SupportedCurrencyPairs.all();
 	}
 
 	@Override
 	public Optional<PriceQuote> getPrice(String symbol) {
-		String normalizedSymbol = normalizeSymbol(symbol);
-		if (!pairsBySymbol.containsKey(normalizedSymbol)) {
+		Optional<CurrencyPair> currencyPair = SupportedCurrencyPairs.findBySymbol(symbol);
+		if (currencyPair.isEmpty()) {
 			return Optional.empty();
 		}
 
+		String normalizedSymbol = currencyPair.orElseThrow().symbol();
 		MockPrice price = MOCK_PRICES.get(normalizedSymbol);
 		return Optional.of(PriceQuote.fromBidAndAsk(
 				normalizedSymbol,
@@ -72,13 +87,6 @@ public class MockMarketDataProvider implements MarketDataProvider {
 				price.ask(),
 				clock.instant()
 		));
-	}
-
-	private String normalizeSymbol(String symbol) {
-		if (symbol == null) {
-			return "";
-		}
-		return symbol.trim().toUpperCase(Locale.ROOT).replace("-", "").replace("_", "");
 	}
 
 	private record MockPrice(BigDecimal bid, BigDecimal ask) {

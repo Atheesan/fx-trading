@@ -2,6 +2,7 @@ import { ArrowLeft, ChartNoAxesCombined } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
 import { PageHeader } from '../components/PageHeader'
+import { ForexChart } from '../components/market/ForexChart'
 import { PriceDisplay } from '../components/market/PriceDisplay'
 import { usePriceQuery } from '../queries/useMarketQueries'
 
@@ -46,6 +47,7 @@ export function PairDetails() {
           </div>
         )}
       </section>
+      <ForexChart symbol={normalizedSymbol} />
     </div>
   )
 }

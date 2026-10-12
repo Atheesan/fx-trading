@@ -3,8 +3,8 @@ package com.fxai.market.provider;
 import com.fxai.instrument.CurrencyPair;
 import com.fxai.instrument.SupportedCurrencyPairs;
 import com.fxai.market.PriceQuote;
-import com.fxai.market.domain.CandleTimeframe;
-import com.fxai.market.domain.PriceCandle;
+import com.fxai.market.domain.Candle;
+import com.fxai.market.domain.CandleQuery;
 import org.springframework.stereotype.Component;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
@@ -24,27 +24,30 @@ import java.util.stream.IntStream;
 		matchIfMissing = true
 )
 public class MockMarketDataProvider implements MarketDataProvider {
-    @Override
-    public Optional<List<PriceCandle>> getHistoricalCandles(
-            String symbol, CandleTimeframe timeframe, int count) {
-        if (count < 1 || count > 5000) {
-            throw new IllegalArgumentException("count must be between 1 and 5000");
-        }
-        Optional<CurrencyPair> pair = SupportedCurrencyPairs.findBySymbol(symbol);
-        if (pair.isEmpty()) {
-            return java.util.Optional.empty();
-        }
+	@Override
+	public Optional<List<Candle>> getHistoricalCandles(String symbol, CandleQuery query) {
+		Optional<CurrencyPair> pair = SupportedCurrencyPairs.findBySymbol(symbol);
+		if (pair.isEmpty()) {
+			return Optional.empty();
+		}
 
-        var now = clock.instant();
-        BigDecimal price = new BigDecimal("1.00000");
-        List<PriceCandle> candles = IntStream.range(0, count)
-                .mapToObj(index -> new PriceCandle(
-                        pair.orElseThrow().symbol(), timeframe,
-                        price, price, price, price, 0L, true,
-                        now.minus(timeframe.duration().multipliedBy(count - index))))
-                .toList();
-        return Optional.of(candles);
-    }
+		var end = query.to() == null ? clock.instant() : query.to();
+		BigDecimal price = new BigDecimal("1.00000");
+		List<Candle> candles = IntStream.range(0, query.limit())
+				.mapToObj(index -> new Candle(
+						pair.orElseThrow().symbol(),
+						query.timeframe(),
+						end.minus(query.timeframe().duration().multipliedBy(query.limit() - index)),
+						price,
+						price,
+						price,
+						price,
+						0L
+				))
+				.filter(candle -> query.from() == null || !candle.timestamp().isBefore(query.from()))
+				.toList();
+		return Optional.of(candles);
+	}
 
 	private static final Map<String, MockPrice> MOCK_PRICES = Map.ofEntries(
 			Map.entry("EURUSD", new MockPrice("1.08420", "1.08440")),

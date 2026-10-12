@@ -6,6 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
 
+class WebSocketMock {
+  onopen: ((event: Event) => void) | null = null
+  onmessage: ((event: MessageEvent) => void) | null = null
+  onerror: ((event: Event) => void) | null = null
+  onclose: ((event: CloseEvent) => void) | null = null
+  close = vi.fn()
+}
+
 function jsonResponse(data: unknown, ok = true) {
   return {
     ok,
@@ -32,6 +40,7 @@ describe('App', () => {
   beforeEach(() => {
     localStorage.clear()
     document.documentElement.classList.remove('dark')
+    vi.stubGlobal('WebSocket', WebSocketMock)
   })
 
   afterEach(() => {

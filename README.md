@@ -41,7 +41,11 @@ The OANDA adapter targets the v20 Practice REST API at `https://api-fxpractice.o
 | `1h` | `H1` |
 | `1d` | `D` |
 
-Current pricing is available at `GET /api/v1/market/prices/{symbol}`. Historical midpoint candles are available at `GET /api/v1/market/candles/{symbol}?timeframe=1m&count=100`; count must be from 1 to 5000. OANDA DTOs stay inside the adapter and are mapped to FXAI domain objects before reaching REST controllers. The adapter performs REST polling only—order placement, trading, and streaming are intentionally excluded. Its REST client is isolated so a future `OandaPricingStreamClient` can be added without changing the domain provider contract.
+Current pricing is available at `GET /api/v1/market/prices/{symbol}`. Historical midpoint candles are available at `GET /api/v1/market/candles/{symbol}?timeframe=1h&limit=500`. Supported timeframes are `1m`, `5m`, `15m`, `1h`, and `1d`. Optional `from` and `to` parameters must be ISO-8601 UTC timestamps, for example `2026-01-01T00:00:00Z`. Every request has a bounded result size: `limit` defaults to 500 and must be between 1 and 5000. OANDA DTOs stay inside the adapter and are mapped to FXAI domain objects before reaching REST controllers. The adapter performs REST polling only—order placement, trading, and streaming are intentionally excluded. Its REST client is isolated so a future `OandaPricingStreamClient` can be added without changing the domain provider contract.
+
+### Real-time prices
+
+The backend has one centralized price poller for all connected browsers. It reads each supported pair through `MarketDataProvider`, publishes internal quote events, and broadcasts `PRICE_UPDATE` messages from `/ws/market`. Browsers use WebSocket updates to refresh their shared query cache and do not independently poll the external Forex provider. Configure the backend polling delay in milliseconds with `FXAI_PRICE_POLL_INTERVAL`; it defaults to `15000`.
 
 FXAI V1 is a real-time Forex market monitoring dashboard and a learning project for modern full-stack, event-driven, cloud-native engineering.
 

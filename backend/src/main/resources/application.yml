@@ -7,12 +7,15 @@ spring:
 fxai:
   market:
     provider: ${FXAI_MARKET_PROVIDER:mock}
+    price-poll-interval: ${FXAI_PRICE_POLL_INTERVAL:15000}
     oanda:
       base-url: ${OANDA_BASE_URL:https://api-fxpractice.oanda.com}
       api-token: ${OANDA_API_TOKEN:}
       account-id: ${OANDA_ACCOUNT_ID:}
       connection-timeout: ${OANDA_CONNECTION_TIMEOUT:2s}
       request-timeout: ${OANDA_REQUEST_TIMEOUT:5s}
+  websocket:
+    allowed-origin: ${FXAI_CORS_ALLOWED_ORIGIN:http://localhost:5173}
 
 management:
   endpoints:

@@ -6,6 +6,7 @@ import com.fxai.market.provider.oanda.exception.OandaAuthenticationException;
 import com.fxai.market.provider.oanda.exception.OandaInvalidResponseException;
 import com.fxai.market.provider.oanda.exception.OandaRateLimitException;
 import com.fxai.market.provider.oanda.exception.OandaUnavailableException;
+import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
@@ -39,11 +40,20 @@ public class OandaRestApiClient {
         }
     }
 
-    public OandaCandlesResponse fetchCandles(String instrument, String granularity, int count) {
+    public OandaCandlesResponse fetchCandles(
+            String instrument, String granularity, Instant from, Instant to, int limit) {
         try {
             OandaCandlesResponse response = restClient.get()
-                    .uri("/v3/instruments/{instrument}/candles?price=M&granularity={granularity}&count={count}",
-                            instrument, granularity, count)
+                    .uri(uriBuilder -> {
+                        var builder = uriBuilder
+                                .path("/v3/instruments/{instrument}/candles")
+                                .queryParam("price", "M")
+                                .queryParam("granularity", granularity);
+                        if (from != null) builder.queryParam("from", from);
+                        if (to != null) builder.queryParam("to", to);
+                        if (from == null || to == null) builder.queryParam("count", limit);
+                        return builder.build(instrument);
+                    })
                     .retrieve()
                     .body(OandaCandlesResponse.class);
             if (response == null || response.candles() == null)

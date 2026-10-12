@@ -13,6 +13,12 @@ import java.time.Instant;
 @RestControllerAdvice(assignableTypes = MarketController.class)
 class MarketApiExceptionHandler {
 
+	@ExceptionHandler(InvalidMarketRequestException.class)
+	@ResponseStatus(HttpStatus.BAD_REQUEST)
+	ApiErrorResponse handleInvalidMarketRequest(InvalidMarketRequestException exception) {
+		return new ApiErrorResponse("INVALID_MARKET_REQUEST", exception.getMessage(), Instant.now());
+	}
+
 	@ExceptionHandler(UnsupportedCurrencyPairException.class)
 	@ResponseStatus(HttpStatus.NOT_FOUND)
 	ApiErrorResponse handleUnsupportedCurrencyPair(UnsupportedCurrencyPairException exception) {

@@ -1,7 +1,9 @@
 import { useHealthQuery } from '../queries/useHealthQuery'
+import { usePriceStreamStatus } from './priceStreamContext'
 
 export function ConnectionStatus() {
   const healthQuery = useHealthQuery()
+  const priceStreamStatus = usePriceStreamStatus()
   const connected = healthQuery.isSuccess && healthQuery.data.status === 'UP'
   const status = healthQuery.isPending
     ? 'Checking'
@@ -27,6 +29,18 @@ export function ConnectionStatus() {
       />
       <span className="text-xs font-medium text-slate-600 dark:text-slate-300 sm:text-sm">
         Backend: {status}
+      </span>
+      <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
+      <span
+        className={`text-xs font-bold sm:text-sm ${
+          priceStreamStatus === 'LIVE'
+            ? 'text-emerald-600 dark:text-emerald-400'
+            : priceStreamStatus === 'RECONNECTING'
+              ? 'text-amber-600 dark:text-amber-400'
+              : 'text-rose-600 dark:text-rose-400'
+        }`}
+      >
+        {priceStreamStatus}
       </span>
     </div>
   )

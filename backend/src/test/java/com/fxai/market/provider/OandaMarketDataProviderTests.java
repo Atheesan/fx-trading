@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.fxai.market.domain.CandleTimeframe;
+import com.fxai.market.domain.CandleQuery;
 import com.fxai.market.error.MarketDataAuthenticationException;
 import com.fxai.market.provider.oanda.OandaMarketDataProperties;
 import com.fxai.market.provider.oanda.OandaRestApiClient;
@@ -55,13 +56,14 @@ class OandaMarketDataProviderTests {
 
     @Test
     void mapsHistoricalCandlesAndTimeframe() {
-        when(client.fetchCandles("GBP_USD", "M15", 1)).thenReturn(
+        CandleQuery query = new CandleQuery(CandleTimeframe.FIFTEEN_MINUTES, null, null, 1);
+        when(client.fetchCandles("GBP_USD", "M15", null, null, 1)).thenReturn(
                 new OandaCandlesResponse("GBP_USD", "M15", List.of(new OandaCandleDto(
                         "2026-10-06T01:00:00Z",
                         new OandaCandlestickDataDto("1.3000", "1.3020", "1.2990", "1.3010"),
-                        42, true))));
+                        42L, true))));
 
-        var candles = provider.getHistoricalCandles("GBPUSD", CandleTimeframe.FIFTEEN_MINUTES, 1)
+        var candles = provider.getHistoricalCandles("GBPUSD", query)
                 .orElseThrow();
 
         assertThat(candles).singleElement().satisfies(candle -> {

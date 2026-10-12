@@ -1,6 +1,8 @@
 package com.fxai.market.provider;
 
 import com.fxai.market.PriceQuote;
+import com.fxai.market.domain.CandleQuery;
+import com.fxai.market.domain.CandleTimeframe;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -44,6 +46,17 @@ class MockMarketDataProviderTests {
 	@Test
 	void returnsEmptyForAnUnsupportedSymbol() {
 		assertThat(provider.getPrice("BTCUSD")).isEmpty();
+	}
+
+	@Test
+	void returnsABoundedCandleResult() {
+		var candles = provider.getHistoricalCandles(
+				"EURUSD", new CandleQuery(CandleTimeframe.FIVE_MINUTES, null, NOW, 3)
+		).orElseThrow();
+
+		assertThat(candles).hasSize(3);
+		assertThat(candles).extracting(candle -> candle.timeframe())
+				.containsOnly(CandleTimeframe.FIVE_MINUTES);
 	}
 
 }

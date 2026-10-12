@@ -1,9 +1,9 @@
 package com.fxai.market.provider;
 
-import com.fxai.market.domain.CandleTimeframe;
+import com.fxai.market.domain.Candle;
+import com.fxai.market.domain.CandleQuery;
 import com.fxai.instrument.CurrencyPair;
 import com.fxai.instrument.SupportedCurrencyPairs;
-import com.fxai.market.domain.PriceCandle;
 import com.fxai.market.PriceQuote;
 import com.fxai.market.error.MarketDataAuthenticationException;
 import com.fxai.market.error.MarketDataRateLimitException;
@@ -72,19 +72,19 @@ public class OandaMarketDataProvider implements MarketDataProvider {
     }
 
     @Override
-    public Optional<List<PriceCandle>> getHistoricalCandles(
-            String symbol, CandleTimeframe timeframe, int count) {
+    public Optional<List<Candle>> getHistoricalCandles(String symbol, CandleQuery query) {
         Optional<String> instrument = toOandaInstrument(symbol);
         if (instrument.isEmpty()) return Optional.empty();
-        if (count < 1 || count > 5000) throw new IllegalArgumentException("count must be between 1 and 5000");
         long started = System.nanoTime();
         try {
-            String granularity = OandaGranularityMapper.toOanda(timeframe);
-            var response = client.fetchCandles(instrument.get(), granularity, count);
+            String granularity = OandaGranularityMapper.toOanda(query.timeframe());
+            var response = client.fetchCandles(
+                    instrument.get(), granularity, query.from(), query.to(), query.limit());
             if (!instrument.get().equals(response.instrument()) || !granularity.equals(response.granularity()))
                 throw new OandaInvalidResponseException("OANDA candle response did not match the request");
-            List<PriceCandle> candles = response.candles().stream()
-                    .map(candle -> mapCandle(normalize(symbol), timeframe, candle))
+            List<Candle> candles = response.candles().stream()
+                    .limit(query.limit())
+                    .map(candle -> mapCandle(normalize(symbol), query, candle))
                     .toList();
             logSuccess("historical-candles", normalize(symbol), started);
             return Optional.of(candles);
@@ -100,12 +100,12 @@ public class OandaMarketDataProvider implements MarketDataProvider {
         }
     }
 
-    private PriceCandle mapCandle(String symbol, CandleTimeframe timeframe, OandaCandleDto candle) {
+    private Candle mapCandle(String symbol, CandleQuery query, OandaCandleDto candle) {
         if (candle == null || candle.mid() == null || candle.time() == null)
             throw new OandaInvalidResponseException("OANDA candle was missing required fields");
-        return new PriceCandle(symbol, timeframe, decimal(candle.mid().open()), decimal(candle.mid().high()),
-                decimal(candle.mid().low()), decimal(candle.mid().close()), candle.volume(),
-                candle.complete(), Instant.parse(candle.time()));
+        return new Candle(symbol, query.timeframe(), Instant.parse(candle.time()),
+                decimal(candle.mid().open()), decimal(candle.mid().high()),
+                decimal(candle.mid().low()), decimal(candle.mid().close()), candle.volume());
     }
 
     private void validatePrice(OandaClientPriceDto price, String expectedInstrument) {

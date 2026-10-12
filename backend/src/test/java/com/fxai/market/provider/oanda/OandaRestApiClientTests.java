@@ -10,6 +10,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import com.fxai.market.provider.oanda.exception.OandaInvalidResponseException;
 import com.fxai.market.provider.oanda.exception.OandaAuthenticationException;
 import com.fxai.market.provider.oanda.exception.OandaRateLimitException;
+import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -51,7 +52,20 @@ class OandaRestApiClientTests {
                 .andRespond(withSuccess("""
                         {"instrument":"EUR_USD","granularity":"H1","candles":[]}
                         """, MediaType.APPLICATION_JSON));
-        assertThat(client.fetchCandles("EUR_USD", "H1", 2).candles()).isEmpty();
+        assertThat(client.fetchCandles("EUR_USD", "H1", null, null, 2).candles()).isEmpty();
+        server.verify();
+    }
+
+    @Test
+    void requestsHistoricalCandlesForDateRangeWithoutCount() {
+        server.expect(requestTo("https://api-fxpractice.oanda.com/v3/instruments/EUR_USD/candles?price=M&granularity=H1&from=2026-10-01T00:00:00Z&to=2026-10-02T00:00:00Z"))
+                .andRespond(withSuccess("""
+                        {"instrument":"EUR_USD","granularity":"H1","candles":[]}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThat(client.fetchCandles(
+                "EUR_USD", "H1", Instant.parse("2026-10-01T00:00:00Z"),
+                Instant.parse("2026-10-02T00:00:00Z"), 100).candles()).isEmpty();
         server.verify();
     }
 

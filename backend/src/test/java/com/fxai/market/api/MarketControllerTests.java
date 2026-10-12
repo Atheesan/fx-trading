@@ -6,8 +6,9 @@ import com.fxai.market.PriceQuote;
 import com.fxai.market.error.MarketDataRateLimitException;
 import com.fxai.market.error.MarketDataUnavailableException;
 import com.fxai.market.error.MarketDataAuthenticationException;
+import com.fxai.market.domain.Candle;
+import com.fxai.market.domain.CandleQuery;
 import com.fxai.market.domain.CandleTimeframe;
-import com.fxai.market.domain.PriceCandle;
 import com.fxai.market.provider.MarketDataProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -108,26 +109,83 @@ class MarketControllerTests {
 
 	@Test
 	void returnsHistoricalCandles() throws Exception {
-		PriceCandle candle = new PriceCandle("EURUSD", CandleTimeframe.ONE_MINUTE,
+		CandleQuery query = new CandleQuery(
+				CandleTimeframe.ONE_HOUR,
+				Instant.parse("2026-01-01T00:00:00Z"),
+				Instant.parse("2026-01-02T00:00:00Z"),
+				500
+		);
+		Candle candle = new Candle("EURUSD", CandleTimeframe.ONE_HOUR, TIMESTAMP,
 				new BigDecimal("1.1000"), new BigDecimal("1.1020"),
 				new BigDecimal("1.0990"), new BigDecimal("1.1010"),
-				42, true, TIMESTAMP);
-		when(marketDataProvider.getHistoricalCandles("EURUSD", CandleTimeframe.ONE_MINUTE, 2))
+				42L);
+		when(marketDataProvider.getHistoricalCandles("EURUSD", query))
 				.thenReturn(Optional.of(List.of(candle)));
 
 		mockMvc.perform(get("/api/v1/market/candles/EURUSD")
-					.param("timeframe", "1m").param("count", "2"))
+					.param("timeframe", "1h")
+					.param("from", "2026-01-01T00:00:00Z")
+					.param("to", "2026-01-02T00:00:00Z")
+					.param("limit", "500"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].symbol").value("EURUSD"))
-				.andExpect(jsonPath("$[0].timeframe").value("1m"))
+				.andExpect(jsonPath("$[0].timeframe").value("1h"))
+				.andExpect(jsonPath("$[0].timestamp").value("2026-01-02T03:04:05Z"))
 				.andExpect(jsonPath("$[0].close").value(1.1010))
 				.andExpect(jsonPath("$[0].volume").value(42));
 	}
 
 	@Test
+	void returnsNotFoundForAnUnsupportedCandleSymbol() throws Exception {
+		CandleQuery query = new CandleQuery(CandleTimeframe.ONE_HOUR, null, null, 500);
+		when(marketDataProvider.getHistoricalCandles("BTCUSD", query)).thenReturn(Optional.empty());
+
+		mockMvc.perform(get("/api/v1/market/candles/BTCUSD").param("timeframe", "1h"))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("UNSUPPORTED_CURRENCY_PAIR"));
+	}
+
+	@Test
 	void rejectsUnsupportedCandleTimeframe() throws Exception {
 		mockMvc.perform(get("/api/v1/market/candles/EURUSD").param("timeframe", "30m"))
-				.andExpect(status().isBadRequest());
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_MARKET_REQUEST"));
+	}
+
+	@Test
+	void rejectsInvalidCandleDates() throws Exception {
+		mockMvc.perform(get("/api/v1/market/candles/EURUSD")
+					.param("timeframe", "1h")
+					.param("from", "not-a-date"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("from must be an ISO-8601 UTC timestamp"));
+
+		mockMvc.perform(get("/api/v1/market/candles/EURUSD")
+					.param("timeframe", "1h")
+					.param("from", "2026-01-02T00:00:00Z")
+					.param("to", "2026-01-01T00:00:00Z"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("from must be before to"));
+	}
+
+	@Test
+	void rejectsExcessiveCandleLimit() throws Exception {
+		mockMvc.perform(get("/api/v1/market/candles/EURUSD")
+					.param("timeframe", "1h")
+					.param("limit", "5001"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("limit must be between 1 and 5000"));
+	}
+
+	@Test
+	void translatesCandleProviderFailuresToServiceUnavailable() throws Exception {
+		CandleQuery query = new CandleQuery(CandleTimeframe.ONE_HOUR, null, null, 500);
+		when(marketDataProvider.getHistoricalCandles("EURUSD", query))
+				.thenThrow(new MarketDataUnavailableException());
+
+		mockMvc.perform(get("/api/v1/market/candles/EURUSD").param("timeframe", "1h"))
+				.andExpect(status().isServiceUnavailable())
+				.andExpect(jsonPath("$.code").value("MARKET_DATA_UNAVAILABLE"));
 	}
 
 	@Test

@@ -3,8 +3,10 @@ import { useQueries, useQuery } from '@tanstack/react-query'
 import {
   getCandles,
   getCurrencyPairs,
+  getIndicators,
   getPrice,
   type CandleTimeframe,
+  type TechnicalIndicatorName,
 } from '../api/market'
 
 export const marketQueryKeys = {
@@ -12,6 +14,11 @@ export const marketQueryKeys = {
   price: (symbol: string) => ['market', 'prices', symbol] as const,
   candles: (symbol: string, timeframe: CandleTimeframe, limit: number) =>
     ['market', 'candles', symbol, timeframe, limit] as const,
+  indicators: (
+    symbol: string,
+    timeframe: CandleTimeframe,
+    indicators: readonly TechnicalIndicatorName[],
+  ) => ['market', 'indicators', symbol, timeframe, ...indicators] as const,
 }
 
 export function useCandlesQuery(
@@ -23,6 +30,19 @@ export function useCandlesQuery(
     queryKey: marketQueryKeys.candles(symbol, timeframe, limit),
     queryFn: ({ signal }) => getCandles(symbol, timeframe, limit, signal),
     enabled: symbol.length > 0,
+    staleTime: 30_000,
+  })
+}
+
+export function useIndicatorsQuery(
+  symbol: string,
+  timeframe: CandleTimeframe,
+  indicators: readonly TechnicalIndicatorName[],
+) {
+  return useQuery({
+    queryKey: marketQueryKeys.indicators(symbol, timeframe, indicators),
+    queryFn: ({ signal }) => getIndicators(symbol, timeframe, indicators, signal),
+    enabled: symbol.length > 0 && indicators.length > 0,
     staleTime: 30_000,
   })
 }

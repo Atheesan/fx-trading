@@ -3,10 +3,12 @@ import {
   CandlestickSeries,
   ColorType,
   CrosshairMode,
+  LineSeries,
   createChart,
   type CandlestickData,
   type IChartApi,
   type ISeriesApi,
+  type LineData,
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts'
@@ -15,6 +17,18 @@ import type { Candle } from '../../api/market'
 
 interface LightweightCandlestickChartProps {
   candles: Candle[]
+  overlays?: PriceIndicatorOverlay[]
+}
+
+export interface PriceIndicatorOverlay {
+  name: 'SMA20' | 'SMA50' | 'EMA20'
+  points: Array<{ timestamp: string; value: number }>
+}
+
+const overlayStyles = {
+  SMA20: { color: '#0ea5e9', lineWidth: 2 as const },
+  SMA50: { color: '#8b5cf6', lineWidth: 2 as const },
+  EMA20: { color: '#f59e0b', lineWidth: 2 as const },
 }
 
 interface CandleDetails {
@@ -60,12 +74,26 @@ function toChartData(candles: Candle[]): CandlestickData<Time>[] {
   )
 }
 
+function toLineData(
+  points: PriceIndicatorOverlay['points'],
+): LineData<Time>[] {
+  return points
+    .map((point) => ({
+      time: toUtcTimestamp(point.timestamp),
+      value: point.value,
+    }))
+    .filter((point) => Number.isFinite(point.time) && Number.isFinite(point.value))
+    .sort((left, right) => Number(left.time) - Number(right.time))
+}
+
 export function LightweightCandlestickChart({
   candles,
+  overlays = [],
 }: LightweightCandlestickChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
+  const overlaySeriesRef = useRef(new Map<PriceIndicatorOverlay['name'], ISeriesApi<'Line'>>())
   const chartData = useMemo(() => toChartData(candles), [candles])
   const [hoveredCandle, setHoveredCandle] = useState<CandleDetails | null>(null)
 
@@ -99,6 +127,16 @@ export function LightweightCandlestickChart({
       borderVisible: false,
       wickUpColor: '#14b8a6',
       wickDownColor: '#f43f5e',
+    })
+    const overlaySeries = overlaySeriesRef.current
+    Object.entries(overlayStyles).forEach(([name, style]) => {
+      const overlayName = name as PriceIndicatorOverlay['name']
+      overlaySeries.set(overlayName, chart.addSeries(LineSeries, {
+        ...style,
+        title: overlayName,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      }))
     })
 
     const handleCrosshairMove = (parameter: Parameters<IChartApi['subscribeCrosshairMove']>[0] extends (value: infer Value) => void ? Value : never) => {
@@ -139,13 +177,18 @@ export function LightweightCandlestickChart({
       chart.remove()
       chartRef.current = null
       seriesRef.current = null
+      overlaySeries.clear()
     }
   }, [])
 
   useEffect(() => {
     seriesRef.current?.setData(chartData)
+    overlaySeriesRef.current.forEach((series, name) => {
+      const overlay = overlays.find((candidate) => candidate.name === name)
+      series.setData(toLineData(overlay?.points ?? []))
+    })
     chartRef.current?.timeScale().fitContent()
-  }, [chartData])
+  }, [chartData, overlays])
 
   const latestCandle = candles.at(-1)
   const details = hoveredCandle ?? (latestCandle

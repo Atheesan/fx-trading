@@ -9,7 +9,13 @@ import com.fxai.market.error.MarketDataAuthenticationException;
 import com.fxai.market.domain.Candle;
 import com.fxai.market.domain.CandleQuery;
 import com.fxai.market.domain.CandleTimeframe;
+import com.fxai.market.domain.indicator.IndicatorPoint;
+import com.fxai.market.domain.indicator.IndicatorResult;
+import com.fxai.market.domain.indicator.IndicatorSpec;
+import com.fxai.market.domain.indicator.IndicatorStatus;
+import com.fxai.market.domain.indicator.MarketIndicators;
 import com.fxai.market.provider.MarketDataProvider;
+import com.fxai.market.service.MarketIndicatorService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -37,6 +43,9 @@ class MarketControllerTests {
 
 	@MockitoBean
 	private MarketDataProvider marketDataProvider;
+
+	@MockitoBean
+	private MarketIndicatorService marketIndicatorService;
 
 	@Test
 	void returnsSupportedCurrencyPairs() throws Exception {
@@ -196,6 +205,70 @@ class MarketControllerTests {
 		mockMvc.perform(get("/api/v1/market/prices/EURUSD"))
 				.andExpect(status().isServiceUnavailable())
 				.andExpect(jsonPath("$.code").value("MARKET_DATA_AUTHENTICATION_FAILED"));
+	}
+
+	@Test
+	void returnsRequestedTechnicalIndicatorsAndInsufficientDataStatus() throws Exception {
+		var smaPoint = IndicatorPoint.value(TIMESTAMP, new BigDecimal("1.10125"));
+		var indicators = new MarketIndicators(
+				"EURUSD",
+				CandleTimeframe.ONE_HOUR,
+				List.of(
+						new IndicatorResult(
+								IndicatorSpec.SMA_20,
+								IndicatorStatus.AVAILABLE,
+								40,
+								List.of(smaPoint)
+						),
+						IndicatorResult.insufficient(IndicatorSpec.SMA_50, 40)
+				)
+		);
+		when(marketIndicatorService.calculate(
+				"EURUSD",
+				CandleTimeframe.ONE_HOUR,
+				List.of(IndicatorSpec.SMA_20, IndicatorSpec.SMA_50)
+		)).thenReturn(Optional.of(indicators));
+
+		mockMvc.perform(get("/api/v1/market/indicators/EURUSD")
+					.param("timeframe", "1h")
+					.param("indicators", "sma20,sma50"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.symbol").value("EURUSD"))
+				.andExpect(jsonPath("$.timeframe").value("1h"))
+				.andExpect(jsonPath("$.indicators[0].name").value("sma20"))
+				.andExpect(jsonPath("$.indicators[0].status").value("AVAILABLE"))
+				.andExpect(jsonPath("$.indicators[0].value").value(1.10125))
+				.andExpect(jsonPath("$.indicators[0].points[0].timestamp").value("2026-01-02T03:04:05Z"))
+				.andExpect(jsonPath("$.indicators[1].status").value("INSUFFICIENT_DATA"))
+				.andExpect(jsonPath("$.indicators[1].requiredDataPoints").value(50))
+				.andExpect(jsonPath("$.indicators[1].availableDataPoints").value(40))
+				.andExpect(jsonPath("$.indicators[1].value").doesNotExist())
+				.andExpect(jsonPath("$.indicators[1].points").isEmpty());
+	}
+
+	@Test
+	void rejectsUnsupportedIndicators() throws Exception {
+		mockMvc.perform(get("/api/v1/market/indicators/EURUSD")
+					.param("timeframe", "1h")
+					.param("indicators", "bollinger"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_MARKET_REQUEST"))
+				.andExpect(jsonPath("$.message").value("Unsupported indicator: bollinger"));
+	}
+
+	@Test
+	void returnsNotFoundForUnsupportedIndicatorSymbol() throws Exception {
+		when(marketIndicatorService.calculate(
+				"BTCUSD",
+				CandleTimeframe.ONE_HOUR,
+				List.of(IndicatorSpec.MACD)
+		)).thenReturn(Optional.empty());
+
+		mockMvc.perform(get("/api/v1/market/indicators/BTCUSD")
+					.param("timeframe", "1h")
+					.param("indicators", "macd"))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("UNSUPPORTED_CURRENCY_PAIR"));
 	}
 
 }

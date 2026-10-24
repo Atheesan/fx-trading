@@ -7,10 +7,45 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ForexChart } from './ForexChart'
 
 vi.mock('./LightweightCandlestickChart', () => ({
-  LightweightCandlestickChart: ({ candles }: { candles: unknown[] }) => (
-    <div>Rendered {candles.length} candles</div>
+  LightweightCandlestickChart: ({
+    candles,
+    overlays,
+  }: { candles: unknown[]; overlays: unknown[] }) => (
+    <div>Rendered {candles.length} candles with {overlays.length} overlays</div>
   ),
 }))
+
+const candle = {
+  symbol: 'EURUSD',
+  timeframe: '1h',
+  timestamp: '2026-01-02T03:00:00Z',
+  open: 1.1,
+  high: 1.2,
+  low: 1,
+  close: 1.15,
+}
+
+const indicatorResponse = {
+  symbol: 'EURUSD',
+  timeframe: '1h',
+  indicators: [{
+    name: 'sma20',
+    type: 'SMA',
+    status: 'AVAILABLE',
+    period: 20,
+    requiredDataPoints: 20,
+    availableDataPoints: 100,
+    value: 1.1,
+    signal: null,
+    histogram: null,
+    points: [{
+      timestamp: '2026-01-02T03:00:00Z',
+      value: 1.1,
+      signal: null,
+      histogram: null,
+    }],
+  }],
+}
 
 function wrapper({ children }: { children: ReactNode }) {
   const queryClient = new QueryClient({
@@ -38,23 +73,23 @@ describe('ForexChart', () => {
   })
 
   it('shows pair, timeframe, loading state, and fetched candles', async () => {
-    vi.mocked(fetch).mockResolvedValue(jsonResponse([{
-      symbol: 'EURUSD',
-      timeframe: '1h',
-      timestamp: '2026-01-02T03:00:00Z',
-      open: 1.1,
-      high: 1.2,
-      low: 1,
-      close: 1.15,
-    }]) as Response)
+    vi.mocked(fetch).mockImplementation((input) => Promise.resolve(
+      jsonResponse(input.toString().includes('/indicators/')
+        ? indicatorResponse
+        : [candle]) as Response,
+    ))
 
     render(<ForexChart symbol="EURUSD" />, { wrapper })
 
     expect(screen.getByLabelText('Loading chart data')).toBeInTheDocument()
     expect(screen.getByText('EUR/USD · 1h')).toBeInTheDocument()
-    expect(await screen.findByText('Rendered 1 candles')).toBeInTheDocument()
+    expect(await screen.findByText('Rendered 1 candles with 1 overlays')).toBeInTheDocument()
     expect(fetch).toHaveBeenCalledWith(
       'http://localhost:8080/api/v1/market/candles/EURUSD?timeframe=1h&limit=500',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:8080/api/v1/market/indicators/EURUSD?timeframe=1h&indicators=sma20%2Csma50%2Cema20%2Crsi14%2Cmacd',
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
 
@@ -81,7 +116,7 @@ describe('ForexChart', () => {
 
     render(<ForexChart symbol="EURUSD" />, { wrapper })
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Chart unavailable')
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    expect(await screen.findByText('Chart unavailable')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Try again' })).toHaveLength(2)
   })
 })

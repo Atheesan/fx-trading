@@ -1,12 +1,20 @@
 import { ChartNoAxesCombined, RefreshCw } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import {
   candleTimeframes,
+  technicalIndicatorNames,
   type CandleTimeframe,
 } from '../../api/market'
-import { useCandlesQuery } from '../../queries/useMarketQueries'
-import { LightweightCandlestickChart } from './LightweightCandlestickChart'
+import {
+  useCandlesQuery,
+  useIndicatorsQuery,
+} from '../../queries/useMarketQueries'
+import { IndicatorPanel } from './IndicatorPanel'
+import {
+  LightweightCandlestickChart,
+  type PriceIndicatorOverlay,
+} from './LightweightCandlestickChart'
 
 interface ForexChartProps {
   symbol: string
@@ -19,6 +27,26 @@ function displayPair(symbol: string) {
 export function ForexChart({ symbol }: ForexChartProps) {
   const [timeframe, setTimeframe] = useState<CandleTimeframe>('1h')
   const candlesQuery = useCandlesQuery(symbol, timeframe)
+  const indicatorsQuery = useIndicatorsQuery(
+    symbol,
+    timeframe,
+    technicalIndicatorNames,
+  )
+  const overlays: PriceIndicatorOverlay[] = useMemo(
+    () => (indicatorsQuery.data?.indicators ?? [])
+      .filter((indicator) => (
+        indicator.status === 'AVAILABLE'
+        && ['sma20', 'sma50', 'ema20'].includes(indicator.name)
+      ))
+      .map((indicator) => ({
+        name: indicator.name.toUpperCase() as PriceIndicatorOverlay['name'],
+        points: indicator.points.map((point) => ({
+          timestamp: point.timestamp,
+          value: point.value,
+        })),
+      })),
+    [indicatorsQuery.data],
+  )
 
   return (
     <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-white/8 dark:bg-white/[0.035]">
@@ -75,8 +103,19 @@ export function ForexChart({ symbol }: ForexChartProps) {
           </p>
         </div>
       ) : (
-        <LightweightCandlestickChart candles={candlesQuery.data} />
+        <LightweightCandlestickChart
+          candles={candlesQuery.data}
+          overlays={overlays}
+        />
       )}
+
+      <IndicatorPanel
+        timeframe={timeframe}
+        indicators={indicatorsQuery.data?.indicators}
+        loading={indicatorsQuery.isPending}
+        error={indicatorsQuery.isError}
+        onRetry={() => void indicatorsQuery.refetch()}
+      />
     </section>
   )
 }

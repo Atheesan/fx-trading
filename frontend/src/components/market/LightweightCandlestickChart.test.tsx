@@ -7,21 +7,31 @@ import { LightweightCandlestickChart } from './LightweightCandlestickChart'
 
 const chartMock = vi.hoisted(() => {
   const series = { setData: vi.fn() }
+  const overlaySeries = {
+    SMA20: { setData: vi.fn() },
+    SMA50: { setData: vi.fn() },
+    EMA20: { setData: vi.fn() },
+  }
   const chart = {
-    addSeries: vi.fn(() => series),
+    addSeries: vi.fn((seriesType: string, options?: { title?: keyof typeof overlaySeries }) => (
+      seriesType === 'line' && options?.title
+        ? overlaySeries[options.title]
+        : series
+    )),
     applyOptions: vi.fn(),
     remove: vi.fn(),
     subscribeCrosshairMove: vi.fn(),
     unsubscribeCrosshairMove: vi.fn(),
     timeScale: vi.fn(() => ({ fitContent: vi.fn() })),
   }
-  return { chart, series, createChart: vi.fn(() => chart) }
+  return { chart, series, overlaySeries, createChart: vi.fn(() => chart) }
 })
 
 vi.mock('lightweight-charts', () => ({
-  CandlestickSeries: {},
+  CandlestickSeries: 'candlestick',
   ColorType: { Solid: 'solid' },
   CrosshairMode: { Normal: 0 },
+  LineSeries: 'line',
   createChart: chartMock.createChart,
 }))
 
@@ -54,13 +64,23 @@ describe('LightweightCandlestickChart', () => {
   })
 
   it('renders candle details and updates them from the crosshair', () => {
-    render(<LightweightCandlestickChart candles={[candle]} />)
+    render(<LightweightCandlestickChart
+      candles={[candle]}
+      overlays={[{
+        name: 'SMA20',
+        points: [{ timestamp: candle.timestamp, value: 1.12 }],
+      }]}
+    />)
 
     expect(screen.getByLabelText('Candle details')).toHaveTextContent('2026-01-02T03:00:00Z')
     expect(chartMock.chart.addSeries).toHaveBeenCalledWith(
-      expect.any(Object),
+      'candlestick',
       expect.objectContaining({ upColor: '#14b8a6', downColor: '#f43f5e' }),
     )
+    expect(chartMock.overlaySeries.SMA20.setData).toHaveBeenCalledWith([{
+      time: 1_767_322_800,
+      value: 1.12,
+    }])
 
     const handler = chartMock.chart.subscribeCrosshairMove.mock.calls[0]?.[0]
     act(() => {

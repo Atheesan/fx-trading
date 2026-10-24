@@ -2,7 +2,9 @@ package com.fxai.market.api;
 
 import com.fxai.market.domain.CandleQuery;
 import com.fxai.market.domain.CandleTimeframe;
+import com.fxai.market.domain.indicator.IndicatorSpec;
 import com.fxai.market.provider.MarketDataProvider;
+import com.fxai.market.service.MarketIndicatorService;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -16,9 +18,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/market")
 public class MarketController {
 	private final MarketDataProvider marketDataProvider;
+	private final MarketIndicatorService marketIndicatorService;
 
-	public MarketController(MarketDataProvider marketDataProvider) {
+	public MarketController(
+			MarketDataProvider marketDataProvider,
+			MarketIndicatorService marketIndicatorService
+	) {
 		this.marketDataProvider = marketDataProvider;
+		this.marketIndicatorService = marketIndicatorService;
 	}
 
 	@GetMapping("/pairs")
@@ -64,6 +71,30 @@ public class MarketController {
 				.limit(query.limit())
 				.map(CandleResponse::from)
 				.toList();
+	}
+
+	@GetMapping("/indicators/{symbol}")
+	public MarketIndicatorsResponse getIndicators(
+			@PathVariable String symbol,
+			@RequestParam String timeframe,
+			@RequestParam String indicators
+	) {
+		CandleTimeframe parsedTimeframe = parseTimeframe(timeframe);
+		List<IndicatorSpec> parsedIndicators;
+		try {
+			parsedIndicators = IndicatorSpec.parseRequested(indicators);
+		} catch (IllegalArgumentException exception) {
+			throw new InvalidMarketRequestException(exception.getMessage());
+		}
+
+		return marketIndicatorService.calculate(symbol, parsedTimeframe, parsedIndicators)
+				.map(MarketIndicatorsResponse::from)
+				.orElseThrow(() -> new UnsupportedCurrencyPairException(symbol));
+	}
+
+	private CandleTimeframe parseTimeframe(String timeframe) {
+		return CandleTimeframe.fromCode(timeframe)
+				.orElseThrow(() -> new InvalidMarketRequestException("Unsupported timeframe: " + timeframe));
 	}
 
 	private Instant parseInstant(String parameterName, String value) {

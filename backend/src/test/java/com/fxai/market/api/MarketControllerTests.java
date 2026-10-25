@@ -15,6 +15,7 @@ import com.fxai.market.domain.indicator.IndicatorSpec;
 import com.fxai.market.domain.indicator.IndicatorStatus;
 import com.fxai.market.domain.indicator.MarketIndicators;
 import com.fxai.market.provider.MarketDataProvider;
+import com.fxai.market.service.HistoricalCandleService;
 import com.fxai.market.service.MarketIndicatorService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +44,9 @@ class MarketControllerTests {
 
 	@MockitoBean
 	private MarketDataProvider marketDataProvider;
+
+	@MockitoBean
+	private HistoricalCandleService historicalCandleService;
 
 	@MockitoBean
 	private MarketIndicatorService marketIndicatorService;
@@ -128,7 +132,7 @@ class MarketControllerTests {
 				new BigDecimal("1.1000"), new BigDecimal("1.1020"),
 				new BigDecimal("1.0990"), new BigDecimal("1.1010"),
 				42L);
-		when(marketDataProvider.getHistoricalCandles("EURUSD", query))
+		when(historicalCandleService.getHistoricalCandles("EURUSD", query))
 				.thenReturn(Optional.of(List.of(candle)));
 
 		mockMvc.perform(get("/api/v1/market/candles/EURUSD")
@@ -147,7 +151,7 @@ class MarketControllerTests {
 	@Test
 	void returnsNotFoundForAnUnsupportedCandleSymbol() throws Exception {
 		CandleQuery query = new CandleQuery(CandleTimeframe.ONE_HOUR, null, null, 500);
-		when(marketDataProvider.getHistoricalCandles("BTCUSD", query)).thenReturn(Optional.empty());
+		when(historicalCandleService.getHistoricalCandles("BTCUSD", query)).thenReturn(Optional.empty());
 
 		mockMvc.perform(get("/api/v1/market/candles/BTCUSD").param("timeframe", "1h"))
 				.andExpect(status().isNotFound())
@@ -189,7 +193,7 @@ class MarketControllerTests {
 	@Test
 	void translatesCandleProviderFailuresToServiceUnavailable() throws Exception {
 		CandleQuery query = new CandleQuery(CandleTimeframe.ONE_HOUR, null, null, 500);
-		when(marketDataProvider.getHistoricalCandles("EURUSD", query))
+		when(historicalCandleService.getHistoricalCandles("EURUSD", query))
 				.thenThrow(new MarketDataUnavailableException());
 
 		mockMvc.perform(get("/api/v1/market/candles/EURUSD").param("timeframe", "1h"))

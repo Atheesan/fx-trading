@@ -1,5 +1,6 @@
 package com.fxai.common.config;
 
+import com.fxai.PostgresIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,7 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("local")
-class LocalCorsConfigurationTests {
+class LocalCorsConfigurationTests extends PostgresIntegrationTest {
 
 	@Autowired
 	private MockMvc mockMvc;

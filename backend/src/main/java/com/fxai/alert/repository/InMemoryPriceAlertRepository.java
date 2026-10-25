@@ -2,8 +2,6 @@ package com.fxai.alert.repository;
 
 import com.fxai.alert.domain.AlertStatus;
 import com.fxai.alert.domain.PriceAlert;
-import org.springframework.stereotype.Repository;
-
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -12,7 +10,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-@Repository
 public class InMemoryPriceAlertRepository implements PriceAlertRepository {
 	private final ConcurrentHashMap<UUID, PriceAlert> alerts = new ConcurrentHashMap<>();
 

@@ -13,7 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
         "fxai.market.oanda.api-token=test-token",
         "fxai.market.oanda.account-id=test-account"
 })
-class OandaMarketDataProviderSelectionTests {
+class OandaMarketDataProviderSelectionTests extends PostgresIntegrationTest {
     @Autowired private MarketDataProvider marketDataProvider;
 
     @Test

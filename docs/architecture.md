@@ -18,20 +18,21 @@ fxai/
 
 ## Delivery status
 
-### Implemented in the initial scaffold
+### Implemented
 
 - A Spring Boot 4.1 and Gradle backend using a Java 25 LTS toolchain.
 - A versioned `GET /api/v1/health` endpoint, validated local-profile CORS configuration, ECS structured console logging, and automated backend tests.
 - A minimal React, TypeScript, and Vite frontend that builds and renders an application shell.
 - Repository directories for future infrastructure and architecture documentation.
-- No Forex market-data behavior, external integrations, persistence, WebSocket endpoints, Kafka flows, or security behavior.
+- PostgreSQL persistence for currency pairs, price alerts, and historical candles, with Flyway-managed schema migrations.
+- A TimescaleDB hypertable for historical candle data and Docker Compose configuration for local development.
+- Testcontainers-backed repository and migration integration tests.
 
 ### Planned V1 work
 
 - Instrument discovery and selection.
 - Current quote and historical price queries.
 - A replaceable external Forex market-data provider adapter.
-- PostgreSQL persistence, with TimescaleDB used where time-series access patterns justify it.
 - Redis caching for appropriate short-lived market data and coordination needs.
 - Server-to-browser live updates through WebSocket.
 - Kafka-based internal event distribution when the simpler in-process flow no longer meets V1 reliability or throughput needs.
@@ -222,11 +223,11 @@ The exact port methods will be shaped by implemented use cases rather than copie
 - PostgreSQL is the system of record for relational metadata and durable application data.
 - TimescaleDB is considered for quote or candle tables when hypertables, retention policies, compression, or time-bucket queries materially improve the V1 workload.
 - Redis is used only for justified short-lived caching, deduplication, or coordination. It is not a durable source of truth.
-- Schema changes will be versioned with a migration tool when persistence is introduced.
+- Schema changes are versioned with Flyway; Hibernate validates the migrated schema and does not evolve it.
 - Persistence entities remain adapter details and are mapped to domain models and API DTOs.
 - Database timestamps are stored in UTC. Financial prices use exact numeric columns compatible with Java `BigDecimal`.
 
-No database, schema, migration, repository, or cache integration is implemented in the initial scaffold.
+Price alerts use a JPA persistence adapter behind the domain repository contract. Provider-fetched historical candles are persisted through a dedicated application service, while REST responses continue to use API DTOs rather than JPA entities. The candle table is a TimescaleDB hypertable partitioned by its UTC candle timestamp. Redis remains unimplemented until a concrete caching or coordination use case requires it.
 
 ## WebSocket flow
 

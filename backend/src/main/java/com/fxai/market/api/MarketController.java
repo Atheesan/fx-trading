@@ -4,6 +4,7 @@ import com.fxai.market.domain.CandleQuery;
 import com.fxai.market.domain.CandleTimeframe;
 import com.fxai.market.domain.indicator.IndicatorSpec;
 import com.fxai.market.provider.MarketDataProvider;
+import com.fxai.market.service.HistoricalCandleService;
 import com.fxai.market.service.MarketIndicatorService;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -18,13 +19,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/market")
 public class MarketController {
 	private final MarketDataProvider marketDataProvider;
+	private final HistoricalCandleService historicalCandleService;
 	private final MarketIndicatorService marketIndicatorService;
 
 	public MarketController(
 			MarketDataProvider marketDataProvider,
+			HistoricalCandleService historicalCandleService,
 			MarketIndicatorService marketIndicatorService
 	) {
 		this.marketDataProvider = marketDataProvider;
+		this.historicalCandleService = historicalCandleService;
 		this.marketIndicatorService = marketIndicatorService;
 	}
 
@@ -65,7 +69,7 @@ public class MarketController {
 			throw new InvalidMarketRequestException(exception.getMessage());
 		}
 
-		return marketDataProvider.getHistoricalCandles(symbol, query)
+		return historicalCandleService.getHistoricalCandles(symbol, query)
 				.orElseThrow(() -> new UnsupportedCurrencyPairException(symbol))
 				.stream()
 				.limit(query.limit())

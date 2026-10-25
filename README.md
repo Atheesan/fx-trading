@@ -65,6 +65,8 @@ See [the architecture document](docs/architecture.md) for V1 boundaries and plan
 
 The backend uses a Gradle Java 25 LTS toolchain. The Gradle wrapper downloads the required Gradle version.
 
+Start TimescaleDB before the backend and export the database variables documented in [the infrastructure guide](infrastructure/README.md). Flyway owns schema evolution and runs automatically during startup; Hibernate is configured only to validate the migrated schema.
+
 ```shell
 cd backend
 ./gradlew test

@@ -6,7 +6,6 @@ import com.fxai.market.domain.CandleTimeframe;
 import com.fxai.market.domain.indicator.IndicatorSpec;
 import com.fxai.market.domain.indicator.MarketIndicators;
 import com.fxai.market.domain.indicator.TechnicalIndicatorService;
-import com.fxai.market.provider.MarketDataProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,19 +14,19 @@ import java.util.Optional;
 
 @Service
 public class MarketIndicatorService {
-	private final MarketDataProvider marketDataProvider;
+	private final HistoricalCandleService historicalCandleService;
 	private final TechnicalIndicatorService technicalIndicatorService;
 
 	@Autowired
-	public MarketIndicatorService(MarketDataProvider marketDataProvider) {
-		this(marketDataProvider, new TechnicalIndicatorService());
+	public MarketIndicatorService(HistoricalCandleService historicalCandleService) {
+		this(historicalCandleService, new TechnicalIndicatorService());
 	}
 
 	MarketIndicatorService(
-			MarketDataProvider marketDataProvider,
+			HistoricalCandleService historicalCandleService,
 			TechnicalIndicatorService technicalIndicatorService
 	) {
-		this.marketDataProvider = marketDataProvider;
+		this.historicalCandleService = historicalCandleService;
 		this.technicalIndicatorService = technicalIndicatorService;
 	}
 
@@ -38,7 +37,7 @@ public class MarketIndicatorService {
 	) {
 		return SupportedCurrencyPairs.findBySymbol(symbol).flatMap(pair -> {
 			var query = new CandleQuery(timeframe, null, null, CandleQuery.DEFAULT_LIMIT);
-			return marketDataProvider.getHistoricalCandles(pair.symbol(), query)
+			return historicalCandleService.getHistoricalCandles(pair.symbol(), query)
 					.map(candles -> new MarketIndicators(
 							pair.symbol(),
 							timeframe,

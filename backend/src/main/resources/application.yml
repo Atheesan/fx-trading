@@ -7,6 +7,12 @@ spring:
     password: ${FXAI_DATABASE_PASSWORD}
     hikari:
       connection-init-sql: SET TIME ZONE 'UTC'
+  data:
+    redis:
+      host: ${FXAI_REDIS_HOST:localhost}
+      port: ${FXAI_REDIS_PORT:6379}
+      connect-timeout: ${FXAI_REDIS_CONNECT_TIMEOUT:500ms}
+      timeout: ${FXAI_REDIS_TIMEOUT:500ms}
   flyway:
     enabled: true
   jpa:
@@ -24,6 +30,8 @@ fxai:
   market:
     provider: ${FXAI_MARKET_PROVIDER:mock}
     price-poll-interval: ${FXAI_PRICE_POLL_INTERVAL:15000}
+    latest-price-cache:
+      ttl: ${FXAI_LATEST_PRICE_CACHE_TTL:5s}
     oanda:
       base-url: ${OANDA_BASE_URL:https://api-fxpractice.oanda.com}
       api-token: ${OANDA_API_TOKEN:}

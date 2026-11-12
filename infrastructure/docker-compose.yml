@@ -19,5 +19,17 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "${FXAI_REDIS_PORT-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
 volumes:
   fxai_postgres_data:

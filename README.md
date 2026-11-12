@@ -49,6 +49,12 @@ The backend has one centralized price poller for all connected browsers. It read
 
 FXAI V1 is a real-time Forex market monitoring dashboard and a learning project for modern full-stack, event-driven, cloud-native engineering.
 
+### Latest-price cache
+
+`GET /api/v1/market/prices/{symbol}` uses Redis only for the latest normalized quote for a supported currency pair. Keys have the form `fxai:price:EURUSD`. Values are plain JSON with the stable `PriceQuote` fields (`symbol`, `bid`, `ask`, `midpoint`, `spread`, and ISO-8601 `timestamp`); no Java serialization or polymorphic type metadata is stored.
+
+The cache TTL defaults to five seconds and is configured with `FXAI_LATEST_PRICE_CACHE_TTL` using a Spring duration such as `2s` or `500ms`. A cache miss calls the configured `MarketDataProvider`, stores a successful result with that TTL, and returns it. Unsupported symbols and empty provider results are not cached. Redis connection, read, write, or serialization failures are logged and treated as cache misses or ignored writes, so the provider remains authoritative and Redis never becomes the system of record. Historical candles, instrument lists, alerts, and other data are not cached by this feature.
+
 ## Repository layout
 
 ```text

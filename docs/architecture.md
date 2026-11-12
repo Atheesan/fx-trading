@@ -33,7 +33,7 @@ fxai/
 - Instrument discovery and selection.
 - Current quote and historical price queries.
 - A replaceable external Forex market-data provider adapter.
-- Redis caching for appropriate short-lived market data and coordination needs.
+- Redis caching for the latest quote by supported symbol.
 - Server-to-browser live updates through WebSocket.
 - Kafka-based internal event distribution when the simpler in-process flow no longer meets V1 reliability or throughput needs.
 - Prometheus metrics and Grafana dashboards.
@@ -227,7 +227,9 @@ The exact port methods will be shaped by implemented use cases rather than copie
 - Persistence entities remain adapter details and are mapped to domain models and API DTOs.
 - Database timestamps are stored in UTC. Financial prices use exact numeric columns compatible with Java `BigDecimal`.
 
-Price alerts use a JPA persistence adapter behind the domain repository contract. Provider-fetched historical candles are persisted through a dedicated application service, while REST responses continue to use API DTOs rather than JPA entities. The candle table is a TimescaleDB hypertable partitioned by its UTC candle timestamp. Redis remains unimplemented until a concrete caching or coordination use case requires it.
+Price alerts use a JPA persistence adapter behind the domain repository contract. Provider-fetched historical candles are persisted through a dedicated application service, while REST responses continue to use API DTOs rather than JPA entities. The candle table is a TimescaleDB hypertable partitioned by its UTC candle timestamp.
+
+Redis stores only the latest provider-normalized quote for each supported symbol. The REST latest-price use case checks a key such as `fxai:price:EURUSD`, calls `MarketDataProvider` on a miss, and writes the returned quote with a configurable short TTL. Values use an explicit JSON representation without Java serialization metadata. Cache failures degrade to a provider call (or an ignored cache write), and Redis has no durable volume because it is never authoritative. PostgreSQL/TimescaleDB and the external provider retain their existing responsibilities; candles, alerts, supported pairs, and arbitrary API responses are not added to Redis.
 
 ## WebSocket flow
 

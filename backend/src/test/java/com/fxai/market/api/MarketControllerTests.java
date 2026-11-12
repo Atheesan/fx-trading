@@ -16,6 +16,7 @@ import com.fxai.market.domain.indicator.IndicatorStatus;
 import com.fxai.market.domain.indicator.MarketIndicators;
 import com.fxai.market.provider.MarketDataProvider;
 import com.fxai.market.service.HistoricalCandleService;
+import com.fxai.market.service.LatestPriceService;
 import com.fxai.market.service.MarketIndicatorService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +50,9 @@ class MarketControllerTests {
 	private HistoricalCandleService historicalCandleService;
 
 	@MockitoBean
+	private LatestPriceService latestPriceService;
+
+	@MockitoBean
 	private MarketIndicatorService marketIndicatorService;
 
 	@Test
@@ -76,7 +80,7 @@ class MarketControllerTests {
 				new BigDecimal("1.08440"),
 				TIMESTAMP
 		);
-		when(marketDataProvider.getPrice("EURUSD")).thenReturn(Optional.of(quote));
+		when(latestPriceService.getLatestPrice("EURUSD")).thenReturn(Optional.of(quote));
 
 		mockMvc.perform(get("/api/v1/market/prices/EURUSD"))
 				.andExpect(status().isOk())
@@ -91,7 +95,7 @@ class MarketControllerTests {
 
 	@Test
 	void returnsNotFoundForAnUnsupportedSymbol() throws Exception {
-		when(marketDataProvider.getPrice("BTCUSD")).thenReturn(Optional.empty());
+		when(latestPriceService.getLatestPrice("BTCUSD")).thenReturn(Optional.empty());
 
 		mockMvc.perform(get("/api/v1/market/prices/BTCUSD"))
 				.andExpect(status().isNotFound())
@@ -102,7 +106,7 @@ class MarketControllerTests {
 
 	@Test
 	void translatesMarketDataRateLimitsToTooManyRequests() throws Exception {
-		when(marketDataProvider.getPrice("EURUSD")).thenThrow(new MarketDataRateLimitException());
+		when(latestPriceService.getLatestPrice("EURUSD")).thenThrow(new MarketDataRateLimitException());
 
 		mockMvc.perform(get("/api/v1/market/prices/EURUSD"))
 				.andExpect(status().isTooManyRequests())
@@ -112,7 +116,7 @@ class MarketControllerTests {
 
 	@Test
 	void translatesProviderFailuresToServiceUnavailable() throws Exception {
-		when(marketDataProvider.getPrice("EURUSD")).thenThrow(new MarketDataUnavailableException());
+		when(latestPriceService.getLatestPrice("EURUSD")).thenThrow(new MarketDataUnavailableException());
 
 		mockMvc.perform(get("/api/v1/market/prices/EURUSD"))
 				.andExpect(status().isServiceUnavailable())
@@ -203,7 +207,7 @@ class MarketControllerTests {
 
 	@Test
 	void translatesAuthenticationFailuresToServiceUnavailable() throws Exception {
-		when(marketDataProvider.getPrice("EURUSD"))
+		when(latestPriceService.getLatestPrice("EURUSD"))
 				.thenThrow(new MarketDataAuthenticationException("OANDA credentials were rejected"));
 
 		mockMvc.perform(get("/api/v1/market/prices/EURUSD"))

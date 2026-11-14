@@ -15,7 +15,6 @@ import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,10 +42,9 @@ class RedisLatestPriceCacheTests {
 	void ignoresRedisWriteFailure() {
 		PriceQuote quote = quote();
 		when(objectMapper.writeValueAsString(quote)).thenReturn("{\"symbol\":\"EURUSD\"}");
-		when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-		doThrow(new IllegalStateException("Redis unavailable"))
-				.when(valueOperations)
-				.set("fxai:price:EURUSD", "{\"symbol\":\"EURUSD\"}", Duration.ofSeconds(5));
+		when(redisTemplate.execute(org.mockito.ArgumentMatchers.<org.springframework.data.redis.core.script.RedisScript<Long>>any(),
+				org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.<Object[]>any()))
+				.thenThrow(new IllegalStateException("Redis unavailable"));
 		var cache = cache();
 
 		assertThatCode(() -> cache.put(quote)).doesNotThrowAnyException();

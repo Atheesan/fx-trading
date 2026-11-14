@@ -28,6 +28,9 @@ class RedisLatestPriceCacheIntegrationTests extends PostgresIntegrationTest {
 	static void redisProperties(DynamicPropertyRegistry registry) {
 		registry.add("spring.data.redis.host", REDIS::getHost);
 		registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
+		// Allow a freshly started Docker container time to establish its first connection.
+		registry.add("spring.data.redis.connect-timeout", () -> "5s");
+		registry.add("spring.data.redis.timeout", () -> "5s");
 		registry.add("fxai.market.latest-price-cache.ttl", () -> "3s");
 	}
 

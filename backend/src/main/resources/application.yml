@@ -1,6 +1,38 @@
 spring:
   application:
     name: fxai-backend
+  kafka:
+    bootstrap-servers: ${FXAI_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    admin:
+      fail-fast: true
+      auto-create: ${FXAI_KAFKA_CREATE_TOPICS:true}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        spring.json.add.type.headers: false
+        enable.idempotence: false
+        max.in.flight.requests.per.connection: 1
+        max.block.ms: 5000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 15000
+        retry.backoff.ms: 500
+    consumer:
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+        spring.json.value.default.type: com.fxai.market.messaging.PriceTickEvent
+        spring.json.use.type.headers: false
+        spring.json.trusted.packages: com.fxai.market.messaging
+        allow.auto.create.topics: false
+    listener:
+      ack-mode: record
+      auto-startup: ${FXAI_KAFKA_LISTENERS_ENABLED:true}
   datasource:
     url: ${FXAI_DATABASE_URL}
     username: ${FXAI_DATABASE_USERNAME}
@@ -27,6 +59,13 @@ spring:
     time-zone: UTC
 
 fxai:
+  kafka:
+    partitions: ${FXAI_KAFKA_PARTITIONS:3}
+    replicas: ${FXAI_KAFKA_REPLICAS:1}
+    redis-group: ${FXAI_KAFKA_REDIS_GROUP:fxai-latest-price-v1}
+    websocket-group: ${FXAI_KAFKA_WEBSOCKET_GROUP:fxai-websocket-local-v1}
+    retry-interval: ${FXAI_KAFKA_RETRY_INTERVAL:1000}
+    retry-attempts: ${FXAI_KAFKA_RETRY_ATTEMPTS:3}
   market:
     provider: ${FXAI_MARKET_PROVIDER:mock}
     price-poll-interval: ${FXAI_PRICE_POLL_INTERVAL:15000}
@@ -53,6 +92,10 @@ management:
       show-details: never
 
 logging:
+  level:
+    org.apache.kafka: WARN
+    org.springframework.kafka: INFO
+    com.fxai.market.messaging: ${FXAI_KAFKA_LOG_LEVEL:INFO}
   structured:
     format:
       console: ecs

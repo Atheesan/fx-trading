@@ -45,7 +45,7 @@ Current pricing is available at `GET /api/v1/market/prices/{symbol}`. Historical
 
 ### Real-time prices
 
-The backend has one centralized price poller for all connected browsers. It reads each supported pair through `MarketDataProvider`, publishes internal quote events, and broadcasts `PRICE_UPDATE` messages from `/ws/market`. Browsers use WebSocket updates to refresh their shared query cache and do not independently poll the external Forex provider. Configure the backend polling delay in milliseconds with `FXAI_PRICE_POLL_INTERVAL`; it defaults to `15000`.
+The backend has one centralized price poller for all connected browsers. `PriceIngestionService` reads each supported pair through `MarketDataProvider` and publishes symbol-keyed JSON ticks to Kafka topic `market.price.tick.v1`. Independent groups update Redis and deliver `PRICE_UPDATE` messages from `/ws/market`, including the existing alert evaluation. Browsers use WebSocket updates to refresh their shared query cache. Configure the backend polling delay in milliseconds with `FXAI_PRICE_POLL_INTERVAL`; it defaults to `15000`.
 
 FXAI V1 is a real-time Forex market monitoring dashboard and a learning project for modern full-stack, event-driven, cloud-native engineering.
 
@@ -71,7 +71,7 @@ See [the architecture document](docs/architecture.md) for V1 boundaries and plan
 
 The backend uses a Gradle Java 25 LTS toolchain. The Gradle wrapper downloads the required Gradle version.
 
-Start TimescaleDB before the backend and export the database variables documented in [the infrastructure guide](infrastructure/README.md). Flyway owns schema evolution and runs automatically during startup; Hibernate is configured only to validate the migrated schema.
+Start TimescaleDB, Redis, and Kafka KRaft before the backend and export the variables documented in [the infrastructure guide](infrastructure/README.md). Kafka is required for live ingestion and delivery; REST provider/cache reads remain synchronous. Flyway owns schema evolution and runs automatically during startup; Hibernate is configured only to validate the migrated schema.
 
 ```shell
 cd backend

@@ -18,7 +18,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import com.fxai.market.messaging.PriceTickPublisher;
+import com.fxai.market.messaging.PriceTickEvent;
+import com.fxai.market.service.PriceIngestionService;
 
 @ExtendWith(MockitoExtension.class)
 class PricePollingServiceTests {
@@ -31,13 +33,13 @@ class PricePollingServiceTests {
 	private MarketDataProvider marketDataProvider;
 
 	@Mock
-	private ApplicationEventPublisher eventPublisher;
+	private PriceTickPublisher eventPublisher;
 
 	private PricePollingService service;
 
 	@BeforeEach
 	void setUp() {
-		service = new PricePollingService(marketDataProvider, eventPublisher);
+		service = new PricePollingService(new PriceIngestionService(marketDataProvider, eventPublisher, "mock"));
 		when(marketDataProvider.getCurrencyPairs()).thenReturn(List.of(EUR_USD, GBP_USD));
 	}
 
@@ -52,10 +54,10 @@ class PricePollingServiceTests {
 
 		verify(marketDataProvider).getPrice("EURUSD");
 		verify(marketDataProvider).getPrice("GBPUSD");
-		ArgumentCaptor<PriceQuoteUpdatedEvent> events = ArgumentCaptor.forClass(PriceQuoteUpdatedEvent.class);
-		verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(events.capture());
+		ArgumentCaptor<PriceTickEvent> events = ArgumentCaptor.forClass(PriceTickEvent.class);
+		verify(eventPublisher, org.mockito.Mockito.times(2)).publish(events.capture());
 		org.assertj.core.api.Assertions.assertThat(events.getAllValues())
-				.extracting(event -> event.quote().symbol())
+				.extracting(PriceTickEvent::symbol)
 				.containsExactly("EURUSD", "GBPUSD");
 	}
 
@@ -69,7 +71,7 @@ class PricePollingServiceTests {
 		service.pollPrices();
 
 		verify(marketDataProvider).getPrice("GBPUSD");
-		verify(eventPublisher).publishEvent(new PriceQuoteUpdatedEvent(gbpUsd));
+		verify(eventPublisher).publish(org.mockito.ArgumentMatchers.argThat(event -> event.toQuote().equals(gbpUsd)));
 	}
 
 	private PriceQuote quote(String symbol, String bid, String ask) {

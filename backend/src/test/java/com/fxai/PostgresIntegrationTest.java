@@ -6,7 +6,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
-@SpringBootTest(properties = "fxai.market.price-poll-interval=3600000")
+@SpringBootTest
 public abstract class PostgresIntegrationTest {
 	private static final DockerImageName TIMESCALE_IMAGE = DockerImageName
 			.parse("timescale/timescaledb:2.17.2-pg17")
@@ -23,6 +23,10 @@ public abstract class PostgresIntegrationTest {
 
 	@DynamicPropertySource
 	static void databaseProperties(DynamicPropertyRegistry registry) {
+		// Dynamic properties also apply when subclasses declare their own @SpringBootTest.
+		registry.add("spring.kafka.listener.auto-startup", () -> "false");
+		registry.add("spring.kafka.admin.auto-create", () -> "false");
+		registry.add("fxai.market.price-poll-interval", () -> "3600000");
 		registry.add("spring.datasource.url", DATABASE::getJdbcUrl);
 		registry.add("spring.datasource.username", DATABASE::getUsername);
 		registry.add("spring.datasource.password", DATABASE::getPassword);

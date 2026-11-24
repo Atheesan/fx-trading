@@ -31,4 +31,18 @@ class LocalCorsConfigurationTests extends PostgresIntegrationTest {
 				.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5173"));
 	}
 
+    @Test
+    void allowsCredentialedAuthPreflightOnlyForConfiguredOrigin() throws Exception {
+        mockMvc.perform(options("/api/v1/auth/login")
+                .header(HttpHeaders.ORIGIN, "http://localhost:5173")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "content-type,x-xsrf-token"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true"));
+        mockMvc.perform(options("/api/v1/auth/login")
+                .header(HttpHeaders.ORIGIN, "https://untrusted.example")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST"))
+                .andExpect(status().isForbidden());
+    }
+
 }

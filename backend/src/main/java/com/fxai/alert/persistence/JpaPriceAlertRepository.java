@@ -30,6 +30,24 @@ public class JpaPriceAlertRepository implements PriceAlertRepository {
 		return repository.save(new PriceAlertEntity(alert, pair)).toDomain();
 	}
 
+    @Override
+    public PriceAlert saveForUser(PriceAlert alert, UUID userId) {
+        var entity = new PriceAlertEntity(alert, entityManager.getReference(CurrencyPairEntity.class, alert.symbol()));
+        entity.setUserId(java.util.Objects.requireNonNull(userId));
+        return repository.save(entity).toDomain();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PriceAlert> findAllByUserId(UUID userId) {
+        return repository.findByUserIdOrderByCreatedAtDesc(userId).stream().map(PriceAlertEntity::toDomain).toList();
+    }
+
+    @Override
+    public boolean deleteByIdAndUserId(UUID id, UUID userId) {
+        return repository.deleteOwnedAlert(id, userId) == 1;
+    }
+
 	@Override
 	@Transactional(readOnly = true)
 	public List<PriceAlert> findAll() {

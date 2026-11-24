@@ -35,8 +35,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@org.springframework.context.annotation.Import(com.fxai.auth.SecurityConfiguration.class)
 @WebMvcTest(MarketController.class)
 class MarketControllerTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder;
 
 	private static final Instant TIMESTAMP = Instant.parse("2026-01-02T03:04:05Z");
 

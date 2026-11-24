@@ -24,6 +24,9 @@ public class PriceAlertEntity {
 	@Id
 	private UUID id;
 
+	@Column(name = "user_id")
+	private UUID userId;
+
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "currency_pair_symbol", nullable = false)
 	private CurrencyPairEntity currencyPair;
@@ -57,6 +60,8 @@ public class PriceAlertEntity {
 		this.createdAt = alert.createdAt();
 		this.triggeredAt = alert.triggeredAt();
 	}
+
+	void setUserId(UUID userId) { this.userId = userId; }
 
 	public PriceAlert toDomain() {
 		return new PriceAlert(

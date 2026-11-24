@@ -2,6 +2,8 @@ package com.fxai.alert.api;
 
 import com.fxai.alert.service.PriceAlertService;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,8 +28,9 @@ public class AlertController {
 
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
-	public PriceAlertResponse create(@Valid @RequestBody CreatePriceAlertRequest request) {
+	public PriceAlertResponse create(@AuthenticationPrincipal Jwt user, @Valid @RequestBody CreatePriceAlertRequest request) {
 		return PriceAlertResponse.from(priceAlertService.create(
+                UUID.fromString(user.getSubject()),
 				request.symbol(),
 				request.condition(),
 				request.targetPrice()
@@ -35,15 +38,15 @@ public class AlertController {
 	}
 
 	@GetMapping
-	public List<PriceAlertResponse> findAll() {
-		return priceAlertService.findAll().stream()
+	public List<PriceAlertResponse> findAll(@AuthenticationPrincipal Jwt user) {
+		return priceAlertService.findAll(UUID.fromString(user.getSubject())).stream()
 				.map(PriceAlertResponse::from)
 				.toList();
 	}
 
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void delete(@PathVariable UUID id) {
-		priceAlertService.delete(id);
+	public void delete(@PathVariable UUID id, @AuthenticationPrincipal Jwt user) {
+		priceAlertService.delete(id, UUID.fromString(user.getSubject()));
 	}
 }

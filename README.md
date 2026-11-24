@@ -104,3 +104,7 @@ npm run dev
 ```
 
 Run `npm run build`, `npm test`, and `npm run lint` for validation.
+
+## Authentication
+
+See [authentication setup, API, and security tradeoffs](docs/authentication.md). Set `FXAI_AUTH_SIGNING_KEY` before starting the backend. Sign in through the frontend Account page to persist your watchlist, alerts, and theme.

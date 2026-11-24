@@ -29,24 +29,24 @@ public class PriceAlertService {
 		this.clock = clock;
 	}
 
-	public PriceAlert create(String symbol, AlertCondition condition, BigDecimal targetPrice) {
+	public PriceAlert create(UUID userId, String symbol, AlertCondition condition, BigDecimal targetPrice) {
 		var pair = SupportedCurrencyPairs.findBySymbol(symbol)
 				.orElseThrow(() -> new UnsupportedAlertSymbolException(symbol));
-		return repository.save(PriceAlert.active(
+		return repository.saveForUser(PriceAlert.active(
 				UUID.randomUUID(),
 				pair.symbol(),
 				condition,
 				targetPrice,
 				clock.instant()
-		));
+		), userId);
 	}
 
-	public List<PriceAlert> findAll() {
-		return repository.findAll();
+	public List<PriceAlert> findAll(UUID userId) {
+		return repository.findAllByUserId(userId);
 	}
 
-	public void delete(UUID id) {
-		if (!repository.deleteById(id)) {
+	public void delete(UUID id, UUID userId) {
+		if (!repository.deleteByIdAndUserId(id, userId)) {
 			throw new AlertNotFoundException(id);
 		}
 	}

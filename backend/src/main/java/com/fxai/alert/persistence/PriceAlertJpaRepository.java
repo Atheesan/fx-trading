@@ -13,6 +13,12 @@ import java.util.UUID;
 public interface PriceAlertJpaRepository extends JpaRepository<PriceAlertEntity, UUID> {
 	List<PriceAlertEntity> findAllByOrderByCreatedAtDesc();
 
+    List<PriceAlertEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from PriceAlertEntity alert where alert.id = :id and alert.userId = :userId")
+    int deleteOwnedAlert(@Param("id") UUID id, @Param("userId") UUID userId);
+
 	List<PriceAlertEntity> findByCurrencyPair_SymbolAndStatusOrderByCreatedAtAsc(
 			String symbol,
 			AlertStatus status

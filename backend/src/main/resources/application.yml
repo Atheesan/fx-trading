@@ -59,6 +59,9 @@ spring:
     time-zone: UTC
 
 fxai:
+  auth:
+    signing-key: ${FXAI_AUTH_SIGNING_KEY}
+    secure-cookie: ${FXAI_AUTH_SECURE_COOKIE:true}
   kafka:
     partitions: ${FXAI_KAFKA_PARTITIONS:3}
     replicas: ${FXAI_KAFKA_REPLICAS:1}

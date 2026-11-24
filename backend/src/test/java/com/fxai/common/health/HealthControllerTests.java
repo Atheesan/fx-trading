@@ -10,11 +10,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@org.springframework.context.annotation.Import(com.fxai.auth.SecurityConfiguration.class)
 @WebMvcTest(
 		controllers = HealthController.class,
 		properties = "spring.application.name=fxai-backend"
 )
 class HealthControllerTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder;
 
 	@Autowired
 	private MockMvc mockMvc;

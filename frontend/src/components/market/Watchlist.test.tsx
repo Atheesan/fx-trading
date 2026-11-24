@@ -4,7 +4,14 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { WATCHLIST_STORAGE_KEY } from '../../watchlist/localStorageWatchlistRepository'
+import { createBackendWatchlistRepository } from '../../watchlist/backendWatchlistRepository'
+import { defaultWatchlistState, type WatchlistState } from '../../watchlist/watchlist'
+vi.mock('../../api/client', async importOriginal => {
+  const original = await importOriginal<typeof import('../../api/client')>()
+  return { ...original, currentUserId: () => 'alice' }
+})
+let serverState: WatchlistState
+let repository = createBackendWatchlistRepository()
 import { WatchlistProvider } from '../../watchlist/WatchlistProvider'
 import { Watchlist } from './Watchlist'
 
@@ -32,8 +39,13 @@ function jsonResponse(data: unknown, ok = true) {
   }
 }
 
-function successfulFetch(input: string | URL | Request) {
+function successfulFetch(input: string | URL | Request, init?: RequestInit) {
   const url = input.toString()
+  if (url.endsWith('/api/v1/auth/csrf')) return Promise.resolve(jsonResponse({ token: 'csrf', headerName: 'X-XSRF-TOKEN' }))
+  if (url.endsWith('/api/v1/watchlist')) {
+    if (init?.method === 'PUT') serverState = JSON.parse(init.body as string) as WatchlistState
+    return Promise.resolve(jsonResponse(serverState))
+  }
   if (url.endsWith('/api/v1/health')) {
     return Promise.resolve(
       jsonResponse({ status: 'UP', application: 'fxai-backend' }),
@@ -62,7 +74,7 @@ function renderWatchlist() {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
-        <WatchlistProvider>
+        <WatchlistProvider repository={repository}>
           <Watchlist />
         </WatchlistProvider>
       </MemoryRouter>
@@ -78,6 +90,8 @@ function renderedSymbols() {
 
 beforeEach(() => {
   localStorage.clear()
+  serverState = structuredClone(defaultWatchlistState)
+  repository = createBackendWatchlistRepository()
   vi.stubGlobal('fetch', vi.fn(successfulFetch))
 })
 
@@ -87,9 +101,10 @@ afterEach(() => {
 })
 
 describe('Watchlist', () => {
-  it('starts with the five V1 default pairs in order', () => {
+  it('loads the five V1 default pairs from the backend', async () => {
     renderWatchlist()
 
+    await screen.findByRole('button', { name: 'Select EUR/USD' })
     expect(renderedSymbols()).toEqual([
       'EURUSD',
       'GBPUSD',
@@ -121,7 +136,7 @@ describe('Watchlist', () => {
         'NZDUSD',
         'USDCHF',
       ])
-      expect(JSON.parse(localStorage.getItem(WATCHLIST_STORAGE_KEY) ?? '{}'))
+      expect(serverState)
         .toMatchObject({ symbols: expect.arrayContaining(['USDCHF']) })
     })
   })
@@ -129,6 +144,7 @@ describe('Watchlist', () => {
   it('removes and reorders pairs', async () => {
     renderWatchlist()
 
+    await screen.findByRole('button', { name: 'Select EUR/USD' })
     fireEvent.click(screen.getByRole('button', { name: 'Move GBP/USD up' }))
     expect(renderedSymbols().slice(0, 2)).toEqual(['GBPUSD', 'EURUSD'])
 
@@ -136,7 +152,7 @@ describe('Watchlist', () => {
     expect(renderedSymbols()).not.toContain('AUDUSD')
 
     await waitFor(() => {
-      expect(JSON.parse(localStorage.getItem(WATCHLIST_STORAGE_KEY) ?? '{}'))
+      expect(serverState)
         .toMatchObject({
           symbols: ['GBPUSD', 'EURUSD', 'USDJPY', 'NZDUSD'],
         })
@@ -144,10 +160,7 @@ describe('Watchlist', () => {
   })
 
   it('selects a pair and restores the persisted watchlist', async () => {
-    localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify({
-      symbols: ['USDCHF', 'EURGBP'],
-      selectedSymbol: 'EURGBP',
-    }))
+    serverState = { symbols: ['USDCHF', 'EURGBP'], selectedSymbol: 'EURGBP' }
 
     renderWatchlist()
 
@@ -162,17 +175,17 @@ describe('Watchlist', () => {
       .toHaveAttribute('aria-pressed', 'true')
 
     await waitFor(() => {
-      expect(JSON.parse(localStorage.getItem(WATCHLIST_STORAGE_KEY) ?? '{}'))
+      expect(serverState)
         .toMatchObject({ selectedSymbol: 'USDCHF' })
     })
   })
 
-  it('keeps local editing available when the backend is unavailable', async () => {
+  it('reports backend persistence failure without overwriting saved data', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
     renderWatchlist()
 
     expect(
-      await screen.findByText('Backend unavailable. Watchlist editing is still available.'),
+      await screen.findByText('Your watchlist could not be loaded. Reload to try again.'),
     ).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Remove GBP/USD' }))
     expect(screen.queryByRole('button', { name: 'Select GBP/USD' }))

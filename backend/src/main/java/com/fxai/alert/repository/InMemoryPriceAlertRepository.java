@@ -13,6 +13,17 @@ import java.util.concurrent.atomic.AtomicReference;
 public class InMemoryPriceAlertRepository implements PriceAlertRepository {
 	private final ConcurrentHashMap<UUID, PriceAlert> alerts = new ConcurrentHashMap<>();
 
+	private final ConcurrentHashMap<UUID, UUID> owners = new ConcurrentHashMap<>();
+
+    @Override
+    public PriceAlert saveForUser(PriceAlert alert, UUID userId) { owners.put(alert.id(), userId); return save(alert); }
+
+    @Override
+    public List<PriceAlert> findAllByUserId(UUID userId) { return findAll().stream().filter(a -> userId.equals(owners.get(a.id()))).toList(); }
+
+    @Override
+    public boolean deleteByIdAndUserId(UUID id, UUID userId) { return userId.equals(owners.get(id)) && deleteById(id); }
+
 	@Override
 	public PriceAlert save(PriceAlert alert) {
 		alerts.put(alert.id(), alert);

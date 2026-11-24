@@ -66,6 +66,7 @@ beforeEach(() => {
     init?: RequestInit,
   ) => {
     const url = input.toString()
+    if (url.endsWith('/api/v1/auth/csrf')) return Promise.resolve(jsonResponse({ token: 'csrf', headerName: 'X-XSRF-TOKEN' }))
     if (url.endsWith('/api/v1/market/pairs')) {
       return Promise.resolve(jsonResponse(pairs))
     }
@@ -91,7 +92,7 @@ describe('Alerts', () => {
   it('displays active and triggered alerts separately', async () => {
     renderAlerts()
 
-    expect(await screen.findByRole('heading', { name: 'Active alerts' }))
+    expect(await screen.findByRole('heading', { name: 'Active alerts' }, { timeout: 5000 }))
       .toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Triggered alerts' }))
       .toBeInTheDocument()

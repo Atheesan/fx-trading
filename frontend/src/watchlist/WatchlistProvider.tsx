@@ -3,10 +3,12 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
   type ReactNode,
 } from 'react'
 
-import { browserWatchlistRepository } from './localStorageWatchlistRepository'
+import { createBackendWatchlistRepository } from './backendWatchlistRepository'
+import { useAuth } from '../auth/authContext'
 import {
   defaultWatchlistState,
   isCurrencyPairSymbol,
@@ -24,24 +26,33 @@ interface WatchlistProviderProps {
 
 export function WatchlistProvider({
   children,
-  repository = browserWatchlistRepository,
+  repository: suppliedRepository,
 }: WatchlistProviderProps) {
-  const [state, setState] = useState<WatchlistState>(defaultWatchlistState)
-  const [isHydrated, setIsHydrated] = useState(false)
-  const [persistenceError, setPersistenceError] = useState<string | null>(null)
+  const { userId } = useAuth()
+  const repository = useMemo(() => suppliedRepository ?? (userId ? createBackendWatchlistRepository() : null), [suppliedRepository, userId])
+  const loadedRepository = useRef<WatchlistRepository | null>(null)
+  const loadedState = useRef<WatchlistState | null>(null)
+  const [state, setState] = useState<WatchlistState>(repository ? defaultWatchlistState : { symbols: [], selectedSymbol: null })
+  const [isHydrated, setIsHydrated] = useState(!repository)
+  const [persistenceError, setPersistenceError] = useState<string | null>(repository ? null : 'Sign in to save your watchlist.')
 
   useEffect(() => {
+    loadedRepository.current = null
     let active = true
+    if (!repository) return
 
     repository.load()
       .then((storedState) => {
         if (active && storedState !== null) {
-          setState(sanitizeWatchlistState(storedState))
+          loadedRepository.current = repository
+          const next = sanitizeWatchlistState(storedState)
+          loadedState.current = next
+          setState(next)
         }
       })
       .catch(() => {
         if (active) {
-          setPersistenceError('Watchlist changes cannot be loaded from this browser.')
+          setPersistenceError('Your watchlist could not be loaded. Reload to try again.')
         }
       })
       .finally(() => {
@@ -56,16 +67,16 @@ export function WatchlistProvider({
   }, [repository])
 
   useEffect(() => {
-    if (!isHydrated) {
+    if (!isHydrated || !repository || loadedRepository.current !== repository || state === loadedState.current || persistenceError) {
       return
     }
 
     repository.save(state)
       .then(() => setPersistenceError(null))
       .catch(() => {
-        setPersistenceError('Watchlist changes cannot be saved in this browser.')
+        setPersistenceError('Watchlist changes could not be saved. Reload to try again.')
       })
-  }, [isHydrated, repository, state])
+  }, [isHydrated, repository, state, persistenceError])
 
   const add = useCallback((symbol: string) => {
     const normalizedSymbol = normalizeSymbol(symbol)

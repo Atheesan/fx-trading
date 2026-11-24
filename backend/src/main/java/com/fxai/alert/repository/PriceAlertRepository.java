@@ -10,6 +10,12 @@ import java.util.UUID;
 public interface PriceAlertRepository {
 	PriceAlert save(PriceAlert alert);
 
+	PriceAlert saveForUser(PriceAlert alert, UUID userId);
+
+	List<PriceAlert> findAllByUserId(UUID userId);
+
+	boolean deleteByIdAndUserId(UUID id, UUID userId);
+
 	List<PriceAlert> findAll();
 
 	List<PriceAlert> findActiveBySymbol(String symbol);

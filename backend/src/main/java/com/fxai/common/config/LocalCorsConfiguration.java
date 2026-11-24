@@ -3,7 +3,6 @@ package com.fxai.common.config;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.http.HttpMethod;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -22,7 +21,8 @@ public class LocalCorsConfiguration implements WebMvcConfigurer {
 	public void addCorsMappings(CorsRegistry registry) {
 		registry.addMapping("/api/**")
 				.allowedOrigins(properties.allowedOrigins().toArray(String[]::new))
-				.allowedMethods(HttpMethod.GET.name(), HttpMethod.HEAD.name(), HttpMethod.OPTIONS.name())
+				.allowedMethods("GET", "HEAD", "OPTIONS", "POST", "PUT", "DELETE")
+				.allowCredentials(true)
 				.allowedHeaders("*")
 				.maxAge(3600);
 	}

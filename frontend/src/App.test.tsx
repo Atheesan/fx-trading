@@ -109,13 +109,13 @@ describe('App', () => {
     )
   })
 
-  it('toggles and persists the dark theme', () => {
+  it('toggles the dark theme without storing account settings locally', () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise(() => undefined)))
 
     renderApp()
     fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }))
 
     expect(document.documentElement).toHaveClass('dark')
-    expect(localStorage.getItem('fxai-theme')).toBe('dark')
+    expect(localStorage.getItem('fxai-theme')).toBeNull()
   })
 })

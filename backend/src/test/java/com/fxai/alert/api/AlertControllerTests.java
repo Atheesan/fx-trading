@@ -22,8 +22,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@org.springframework.context.annotation.Import(com.fxai.auth.SecurityConfiguration.class)
 @WebMvcTest(AlertController.class)
 class AlertControllerTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder;
+	private static final UUID USER = UUID.fromString("2bf3de5e-8176-4c91-bb47-9bf5f4aabbe8");
 	private static final UUID ID = UUID.fromString("9bf3de5e-8176-4c91-bb47-9bf5f4aabbe8");
 	private static final Instant CREATED_AT = Instant.parse("2026-01-02T03:04:05Z");
 
@@ -43,13 +47,16 @@ class AlertControllerTests {
 				CREATED_AT
 		);
 		when(priceAlertService.create(
+                USER,
 				"EURUSD",
 				AlertCondition.PRICE_ABOVE,
 				new BigDecimal("1.12500")
 		)).thenReturn(alert);
 
 		mockMvc.perform(post("/api/v1/alerts")
-					.contentType("application/json")
+					.with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt().jwt(j -> j.subject(USER.toString())))
+                    .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
+                    .contentType("application/json")
 					.content("""
 							{
 							  "symbol": "EURUSD",
@@ -69,7 +76,7 @@ class AlertControllerTests {
 
 	@Test
 	void listsAlerts() throws Exception {
-		when(priceAlertService.findAll()).thenReturn(List.of(PriceAlert.active(
+		when(priceAlertService.findAll(USER)).thenReturn(List.of(PriceAlert.active(
 				ID,
 				"USDJPY",
 				AlertCondition.PRICE_BELOW,
@@ -77,7 +84,7 @@ class AlertControllerTests {
 				CREATED_AT
 		)));
 
-		mockMvc.perform(get("/api/v1/alerts"))
+		mockMvc.perform(get("/api/v1/alerts").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt().jwt(j -> j.subject(USER.toString()))))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].id").value(ID.toString()))
 				.andExpect(jsonPath("$[0].condition").value("PRICE_BELOW"));
@@ -85,16 +92,18 @@ class AlertControllerTests {
 
 	@Test
 	void deletesAlert() throws Exception {
-		mockMvc.perform(delete("/api/v1/alerts/{id}", ID))
+		mockMvc.perform(delete("/api/v1/alerts/{id}", ID).with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt().jwt(j -> j.subject(USER.toString()))).with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
 				.andExpect(status().isNoContent());
 
-		verify(priceAlertService).delete(ID);
+		verify(priceAlertService).delete(ID, USER);
 	}
 
 	@Test
 	void rejectsNonPositiveTargetPrice() throws Exception {
 		mockMvc.perform(post("/api/v1/alerts")
-					.contentType("application/json")
+					.with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt().jwt(j -> j.subject(USER.toString())))
+                    .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
+                    .contentType("application/json")
 					.content("""
 							{
 							  "symbol": "EURUSD",
@@ -108,9 +117,9 @@ class AlertControllerTests {
 	@Test
 	void returnsNotFoundWhenDeletingUnknownAlert() throws Exception {
 		org.mockito.Mockito.doThrow(new AlertNotFoundException(ID))
-				.when(priceAlertService).delete(ID);
+				.when(priceAlertService).delete(ID, USER);
 
-		mockMvc.perform(delete("/api/v1/alerts/{id}", ID))
+		mockMvc.perform(delete("/api/v1/alerts/{id}", ID).with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt().jwt(j -> j.subject(USER.toString()))).with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("ALERT_NOT_FOUND"));
 	}

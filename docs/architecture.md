@@ -309,4 +309,4 @@ flowchart LR
 
 ## Security and configuration
 
-Provider credentials, database passwords, and other secrets are supplied through environment variables or an external secret store and are never committed. Public inputs are validated at the boundary, failures return meaningful non-sensitive errors, and provider failures are translated into application-level outcomes. Spring Security will be introduced only when an explicit V1 security requirement is defined.
+Provider credentials, database passwords, and other secrets are supplied through environment variables or an external secret store and are never committed. Public inputs are validated at the boundary, failures return meaningful non-sensitive errors, and provider failures are translated into application-level outcomes. Spring Security protects account-specific watchlists, alerts, and settings. See [authentication](authentication.md) for token lifecycle, browser CSRF/CORS configuration, deployment requirements, and security tradeoffs.
